@@ -80,7 +80,7 @@ public final class StrategyEngine {
         long previousM15Time = Long.MIN_VALUE;
         for (Candle bar : closedM15) {
             if (bar == null || Math.floorMod(bar.time - 600000L, 900000L) != 0
-                    || bar.time <= previousM15Time || bar.time > m5.get(end).time)
+                    || bar.time <= previousM15Time || (previousM15Time != Long.MIN_VALUE && bar.time - previousM15Time != 900000L) || bar.time > m5.get(end).time)
                 throw new IllegalArgumentException("Invalid or future M15 candle in signal");
             previousM15Time = bar.time;
         }
