@@ -75,10 +75,8 @@ public final class StrategyEngine {
     public static Signal signal(List<Candle> m5, int end, List<Candle> closedM15) {
         if (m5 == null || closedM15 == null || end < 0 || end >= m5.size())
             throw new IllegalArgumentException("Invalid signal inputs");
-        if (end < 30 || closedM15.size() < 22) return Signal.WAIT;
         // Aggregated M15 Candle.time is the OPEN of its final constituent M5 bar.
         // Check every supplied bar, not only the last: unordered lists could hide future data.
-        long decisionClose = m5.get(end).time + 300000L;
         long previousM15Time = Long.MIN_VALUE;
         for (Candle bar : closedM15) {
             if (bar == null || Math.floorMod(bar.time - 600000L, 900000L) != 0
@@ -86,6 +84,7 @@ public final class StrategyEngine {
                 throw new IllegalArgumentException("Invalid or future M15 candle in signal");
             previousM15Time = bar.time;
         }
+        if (end < 30 || closedM15.size() < 22) return Signal.WAIT;
         double fast=ema(m5,end,9), slow=ema(m5,end,21), strength=rsi(m5,end,14);
         double volatility=atr(m5,end,14);
         int hi=closedM15.size()-1;
