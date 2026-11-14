@@ -41,6 +41,17 @@ public final class SignalTimelineTest {
         try { StrategyEngine.signal(m5,90,closed); }
         catch(IllegalArgumentException expected) { rejected=true; }
         if(!rejected) throw new AssertionError("Out-of-bounds decision index accepted");
-        System.out.println("PASS: signal rejects future M15 bars and invalid decision index");
+        // Validation must not be bypassed during indicator warm-up.
+        rejected=false;
+        try { StrategyEngine.signal(m5,20,m15); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        if(!rejected) throw new AssertionError("Warm-up accepted future M15 candles");
+        List<StrategyEngine.Candle> shortInvalid=new ArrayList<>(m15.subList(0,10));
+        shortInvalid.set(3,null);
+        rejected=false;
+        try { StrategyEngine.signal(m5,65,shortInvalid); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        if(!rejected) throw new AssertionError("Short M15 list bypassed validation");
+        System.out.println("PASS: M15 timeline validation including warm-up and short inputs");
     }
 }
