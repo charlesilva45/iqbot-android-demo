@@ -55,7 +55,25 @@ public final class OfflineBacktestTest {
         } catch (IOException expected) {
             require(expected.getMessage().contains("2 MiB"), "CSV byte limit error");
         }
+        // Invalid historical data must fail before it can reach the simulation.
+        String header = "timestamp,open,high,low,close\n";
+        assertCsvRejected(header + "0,100,101,99,100\n0,100,101,99,100\n", "duplicate timestamp");
+        assertCsvRejected(header + "0,100,101,99,100\n600000,100,101,99,100\n", "missing M5 candle");
+        assertCsvRejected(header + "1,100,101,99,100\n", "unaligned timestamp");
+        assertCsvRejected(header + "0,100,99,98,100\n", "high below close");
+        assertCsvRejected(header + "0,100,101,101,100\n", "low above open");
+        assertCsvRejected(header + "0,100,NaN,99,100\n", "non-finite high");
+        assertCsvRejected(header + "0,100,101,99,Infinity\n", "non-finite close");
         System.out.println("PASS: offline CSV, indicator snapshot, trade cap, and prospective risk floor");
+    }
+
+    private static void assertCsvRejected(String csv, String description) throws Exception {
+        try {
+            OfflineBacktest.readCsv(asStream(csv));
+            throw new AssertionError("Accepted invalid CSV: " + description);
+        } catch (IOException expected) {
+            require(expected.getMessage().contains("row"), "Missing row-specific error for " + description);
+        }
     }
 
     private static ByteArrayInputStream asStream(String text) {
