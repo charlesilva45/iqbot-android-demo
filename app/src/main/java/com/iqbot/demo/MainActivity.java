@@ -62,6 +62,9 @@ public class MainActivity extends Activity {
         badge.setPadding(dp(12), dp(10), dp(12), dp(10));
         badge.setBackground(surface(Color.rgb(17, 54, 51), 14));
         root.addView(badge);
+        Button backtest = actionButton("Abrir backtest offline", Color.rgb(8, 145, 178), Color.WHITE);
+        root.addView(backtest, buttonParams());
+        backtest.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
         LinearLayout balanceCard = new LinearLayout(this);
         balanceCard.setOrientation(LinearLayout.VERTICAL);
         balanceCard.setPadding(dp(18), dp(18), dp(18), dp(18));

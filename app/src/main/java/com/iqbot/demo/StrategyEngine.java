@@ -71,6 +71,22 @@ public final class StrategyEngine {
         double prev=c.get(i-1).close;
         return Math.max(x.high-x.low,Math.max(Math.abs(x.high-prev),Math.abs(x.low-prev)));
     }
+    public static final class Indicators {
+        public final double ema9, ema21, rsi14, atr14;
+
+        Indicators(List<Candle> candles, int end) {
+            ema9 = ema(candles, end, 9);
+            ema21 = ema(candles, end, 21);
+            rsi14 = rsi(candles, end, 14);
+            atr14 = atr(candles, end, 14);
+        }
+    }
+
+    /** Values through the last closed candle of the supplied series. */
+    public static Indicators indicators(List<Candle> candles) {
+        return new Indicators(candles, candles.size() - 1);
+    }
+
     /** Uses only closed candles at index end; higher timeframe supplied separately and closed. */
     public static Signal signal(List<Candle> m5, int end, List<Candle> closedM15) {
         if (m5 == null || closedM15 == null || end < 0 || end >= m5.size())
@@ -103,6 +119,19 @@ public final class StrategyEngine {
      */
     public static Report backtest(List<Candle> m5, double initialBalance, double stake, double payout,
                                   double stopBalance, int maxTrades) {
+        return backtest(m5, initialBalance, stake, payout, stopBalance, maxTrades, false);
+    }
+
+    /** Skips entries when a full loss would take the balance below the floor. */
+    public static Report backtestWithRiskFloor(List<Candle> m5, double initialBalance, double stake,
+                                                double payout, double floor, int maxTrades) {
+        if (!Double.isFinite(floor) || floor < 0 || floor >= initialBalance || stake > initialBalance)
+            throw new IllegalArgumentException("Invalid risk floor or stake");
+        return backtest(m5, initialBalance, stake, payout, floor, maxTrades, true);
+    }
+
+    private static Report backtest(List<Candle> m5, double initialBalance, double stake, double payout,
+                                   double stopBalance, int maxTrades, boolean enforceFloor) {
         if (!Double.isFinite(initialBalance) || !Double.isFinite(stake) || !Double.isFinite(payout) || !Double.isFinite(stopBalance) || initialBalance<=0 || stake<=0 || payout<0 || payout>1 || maxTrades<1)
             throw new IllegalArgumentException("Invalid simulation parameters");
         if (m5 == null) throw new IllegalArgumentException("Missing candles");
@@ -115,16 +144,18 @@ public final class StrategyEngine {
                 throw new IllegalArgumentException("M5 candles must be contiguous and ordered");
         }
         List<Trade> trades=new ArrayList<>();
+        List<Candle> m15 = new ArrayList<>();
+        int start = 0;
+        while (start < m5.size() && Math.floorMod(m5.get(start).time, 900000L) != 0) start++;
         double balance=initialBalance, peak=balance, maxDD=0;
         int wins=0, losses=0, ties=0;
         for (int i=65;i<m5.size()-1 && trades.size()<maxTrades;i++) {
-            if (balance<stopBalance || balance<stake) break;
-            if (i>0 && m5.get(i).time<=m5.get(i-1).time) throw new IllegalArgumentException("Candles must be ordered");
+            if (enforceFloor) {
+                double remaining = balance - stake;
+                if (remaining < stopBalance - 4 * Math.ulp(balance)) break;
+            } else if (balance<stopBalance || balance<stake) break;
             // Include M15 only when all three constituent M5 candles are closed at i.
-            List<Candle> m15=new ArrayList<>();
-            for(int start=0;start+2<=i;start++) {
-                if (Math.floorMod(m5.get(start).time, 900000L)!=0) continue;
-                if (m5.get(start+1).time-m5.get(start).time!=300000L || m5.get(start+2).time-m5.get(start+1).time!=300000L) continue;
+            for (; start + 2 <= i; start += 3) {
                 Candle a=m5.get(start), b=m5.get(start+1), c=m5.get(start+2);
                 m15.add(new Candle(c.time,a.open,Math.max(a.high,Math.max(b.high,c.high)),
                     Math.min(a.low,Math.min(b.low,c.low)),c.close));
