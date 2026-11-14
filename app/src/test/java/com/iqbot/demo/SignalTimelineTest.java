@@ -25,6 +25,18 @@ public final class SignalTimelineTest {
         try { StrategyEngine.signal(m5,65,m15); }
         catch(IllegalArgumentException expected) { rejected=true; }
         if(!rejected) throw new AssertionError("Future M15 bars accepted");
+        List<StrategyEngine.Candle> hiddenFuture=new ArrayList<>(closed);
+        hiddenFuture.set(4,m15.get(29));
+        rejected=false;
+        try { StrategyEngine.signal(m5,65,hiddenFuture); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        if(!rejected) throw new AssertionError("Unordered future M15 bar accepted");
+        List<StrategyEngine.Candle> duplicate=new ArrayList<>(closed);
+        duplicate.set(5,duplicate.get(4));
+        rejected=false;
+        try { StrategyEngine.signal(m5,65,duplicate); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        if(!rejected) throw new AssertionError("Duplicate M15 bar accepted");
         rejected=false;
         try { StrategyEngine.signal(m5,90,closed); }
         catch(IllegalArgumentException expected) { rejected=true; }
