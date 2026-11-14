@@ -1,6 +1,9 @@
 package com.iqbot.demo;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.widget.Toast;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Canvas;
@@ -98,6 +101,23 @@ public class MainActivity extends Activity {
         Button reset = actionButton("Reiniciar dados fictícios", Color.rgb(30, 41, 59), Color.rgb(203, 213, 225));
         root.addView(reset, buttonParams());
         reset.setOnClickListener(v -> reset());
+        TextView accessTitle = label("ACESSO À CORRETORA", 12, Color.rgb(148, 163, 184));
+        accessTitle.setPadding(0, dp(24), 0, dp(8));
+        root.addView(accessTitle);
+        Button brokerAccess = actionButton("Abrir site da IQ Option", Color.rgb(30, 41, 59), Color.WHITE);
+        root.addView(brokerAccess, buttonParams());
+        brokerAccess.setOnClickListener(v -> {
+            // External browser only: no OAuth tokens, passwords, cookies or broker API in IQBot.
+            Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse("https://iqoption.com/"));
+            try {
+                startActivity(browser);
+            } catch (android.content.ActivityNotFoundException ex) {
+                Toast.makeText(this, "Nenhum navegador disponível.", Toast.LENGTH_LONG).show();
+            }
+        });
+        TextView brokerNote = label("O login, inclusive com Google se oferecido pela corretora, acontece somente no site oficial. Abrir o site não conecta sua conta ao IQBot.", 12, Color.rgb(148, 163, 184));
+        brokerNote.setPadding(0, dp(8), 0, dp(4));
+        root.addView(brokerNote);
         TextView historyTitle = label("Histórico de operações", 17, Color.WHITE);
         historyTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         historyTitle.setPadding(0, dp(22), 0, dp(10));
