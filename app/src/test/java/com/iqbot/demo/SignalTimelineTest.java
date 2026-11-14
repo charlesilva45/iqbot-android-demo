@@ -37,6 +37,13 @@ public final class SignalTimelineTest {
         try { StrategyEngine.signal(m5,65,duplicate); }
         catch(IllegalArgumentException expected) { rejected=true; }
         if(!rejected) throw new AssertionError("Duplicate M15 bar accepted");
+        // A missing M15 bar must not silently distort higher-timeframe EMA.
+        List<StrategyEngine.Candle> gap=new ArrayList<>(closed);
+        gap.remove(8);
+        rejected=false;
+        try { StrategyEngine.signal(m5,65,gap); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        if(!rejected) throw new AssertionError("Missing M15 candle accepted");
         rejected=false;
         try { StrategyEngine.signal(m5,90,closed); }
         catch(IllegalArgumentException expected) { rejected=true; }
