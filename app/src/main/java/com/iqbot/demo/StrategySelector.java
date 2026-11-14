@@ -145,6 +145,15 @@ public final class StrategySelector {
         StrategyEngine.Candle last=bars.get(end);
         double move=Math.abs(last.close-bars.get(end-1).close);
         boolean shock=priorAtr>0&&(trueRange(bars,end)>3*priorAtr||move>2.5*priorAtr);
+        // Cool down for the shock bar and the following three closed bars.
+        // Each historical threshold is computed from candles BEFORE that bar.
+        for(int j=Math.max(15,end-3);j<end&&!shock;j++) {
+            double referenceAtr=atr(bars,j-1,14);
+            double previousClose=bars.get(j-1).close;
+            if(referenceAtr>0&&(trueRange(bars,j)>3*referenceAtr||
+                    Math.abs(bars.get(j).close-previousClose)>2.5*referenceAtr))
+                shock=true;
+        }
         double fast=ema(bars,end,9),slow=ema(bars,end,21);
         double oldFast=ema(bars,end-3,9),oldSlow=ema(bars,end-3,21);
         StrategyEngine.Signal direction=fast>slow&&fast>oldFast&&slow>oldSlow?
