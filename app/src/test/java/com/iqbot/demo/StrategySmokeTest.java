@@ -38,6 +38,19 @@ public final class StrategySmokeTest {
         try { StrategyEngine.backtest(broken,100,2,0.8,90,10); }
         catch(IllegalArgumentException expected) { badTimeline=true; }
         if(!badTimeline) throw new AssertionError("Broken timeline accepted");
+        // A one-bar dataset previously bypassed alignment validation.
+        boolean firstUnaligned=false;
+        try {
+            StrategyEngine.backtest(java.util.Collections.singletonList(
+                new StrategyEngine.Candle(start+1,1,2,0.5,1)),100,2,0.8,90,10);
+        } catch(IllegalArgumentException expected) { firstUnaligned=true; }
+        if(!firstUnaligned) throw new AssertionError("First candle alignment not validated");
+        boolean nullCandle=false;
+        try {
+            StrategyEngine.backtest(java.util.Arrays.asList(
+                new StrategyEngine.Candle(start,1,2,0.5,1),null),100,2,0.8,90,10);
+        } catch(IllegalArgumentException expected) { nullCandle=true; }
+        if(!nullCandle) throw new AssertionError("Null candle not rejected");
         // Future prices must not change trades that settled before the modified bar.
         List<StrategyEngine.Candle> altered=new java.util.ArrayList<>(candles);
         for(int i=200;i<altered.size();i++) {
