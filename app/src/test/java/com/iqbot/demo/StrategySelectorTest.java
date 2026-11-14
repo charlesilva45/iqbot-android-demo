@@ -44,6 +44,27 @@ public final class StrategySelectorTest {
                 "Shock must block recommendation");
         // The strength label counts directional candles, never future bars.
         check(up.strength>=0&&up.strength<=3,"Invalid trend strength");
+        // Falling prices must not be classified as an uptrend.
+        List<StrategyEngine.Candle> falling=new ArrayList<>();
+        for(int i=0;i<100;i++) {
+            double p=200-i*0.15;
+            falling.add(new StrategyEngine.Candle(i*300000L,p,p+0.4,p-0.4,p));
+        }
+        check(StrategySelector.trend(falling,99).direction==StrategyEngine.Signal.PUT,
+                "Downtrend misclassified");
+        // Upward shocks are blocked just like sudden drops.
+        List<StrategyEngine.Candle> spike=bars(100);
+        double previous=spike.get(98).close;
+        spike.set(99,new StrategyEngine.Candle(99*300000L,previous,previous+20,previous-0.4,previous+19));
+        check(StrategySelector.trend(spike,99).shock,"Upward shock not detected");
+        check(StrategySelector.recommend(spike,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Upward shock must block recommendation");
+        // Flat bars should not produce a directional consensus.
+        List<StrategyEngine.Candle> flat=new ArrayList<>();
+        for(int i=0;i<100;i++)
+            flat.add(new StrategyEngine.Candle(i*300000L,100,100.2,99.8,100));
+        check(StrategySelector.recommend(flat,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Flat market must wait");
         // The selector rejects a missing M5 candle in the observed prefix.
         List<StrategyEngine.Candle> gap=bars(100);
         gap.remove(20);
