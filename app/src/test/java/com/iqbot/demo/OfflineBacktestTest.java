@@ -29,6 +29,14 @@ public final class OfflineBacktestTest {
         StrategyEngine.Report floor = StrategyEngine.backtestWithRiskFloor(imported, 100, 2, 0.8, 90, 10);
         require(floor.trades.size() == 5 && floor.finalBalance == 90 && floor.maxDrawdown == 10,
                 "Allow entry whose full loss reaches the floor exactly");
+        // Regression: every executed trade must be CALL, never PUT, and must not overlap.
+        long previousExit = Long.MIN_VALUE;
+        for (StrategyEngine.Trade trade : floor.trades) {
+            require(trade.direction == StrategyEngine.Signal.CALL, "PUT must never execute");
+            require(trade.entryTime >= previousExit, "Overlapping trades");
+            require(trade.exitTime - trade.entryTime == 300_000L, "Unexpected expiry");
+            previousExit = trade.exitTime;
+        }
         StrategyEngine.Report blocked = StrategyEngine.backtestWithRiskFloor(imported, 100, 3, 0.8, 90, 10);
         require(blocked.trades.size() == 3 && blocked.finalBalance == 91,
                 "Block before prospective loss breaches the floor");
