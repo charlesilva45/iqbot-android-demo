@@ -109,8 +109,7 @@ public final class StrategyEngine {
         if (volatility <= 0 || volatility/last.close < 0.0001) return Signal.WAIT;
         if (fast>slow && trendFast>trendSlow && strength>=52 && strength<=68
                 && last.close>last.open && last.close>prev.high) return Signal.CALL;
-        if (fast<slow && trendFast<trendSlow && strength>=32 && strength<=48
-                && last.close<last.open && last.close<prev.low) return Signal.PUT;
+        // CALL-only research policy: bearish conditions must abstain, never emit PUT.
         return Signal.WAIT;
     }
     /** M5 candles must be chronologically sorted and complete. M15 bars aggregate three M5 bars.
