@@ -59,6 +59,14 @@ public final class StrategySelectorTest {
         check(StrategySelector.trend(spike,99).shock,"Upward shock not detected");
         check(StrategySelector.recommend(spike,99).selected.signal==StrategyEngine.Signal.WAIT,
                 "Upward shock must block recommendation");
+        // A shock wick three bars ago still enforces a cooldown; four bars ago does not.
+        List<StrategyEngine.Candle> cooldown=bars(101);
+        StrategyEngine.Candle wick=cooldown.get(96);
+        cooldown.set(96,new StrategyEngine.Candle(wick.time,wick.open,wick.high+20,wick.low,wick.close));
+        check(StrategySelector.trend(cooldown,99).shock,"Three-bar cooldown missing");
+        check(StrategySelector.recommend(cooldown,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Cooldown must block recommendation");
+        check(!StrategySelector.trend(cooldown,100).shock,"Cooldown should expire after three bars");
         // Flat bars should not produce a directional consensus.
         List<StrategyEngine.Candle> flat=new ArrayList<>();
         for(int i=0;i<100;i++)
