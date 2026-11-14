@@ -15,9 +15,10 @@ jobs:
       - name: Compile pure Java strategy and smoke test
         run: |
           mkdir -p /tmp/iqbot-classes
-          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/StrategyEngine.java app/src/main/java/com/iqbot/demo/CandleCsv.java app/src/main/java/com/iqbot/demo/OutOfSample.java app/src/test/java/com/iqbot/demo/StrategySmokeTest.java app/src/test/java/com/iqbot/demo/IndicatorTest.java app/src/test/java/com/iqbot/demo/CandleCsvValidationTest.java app/src/test/java/com/iqbot/demo/OutOfSampleTest.java app/src/test/java/com/iqbot/demo/SignalTimelineTest.java
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/StrategyEngine.java app/src/main/java/com/iqbot/demo/CandleCsv.java app/src/main/java/com/iqbot/demo/OutOfSample.java app/src/main/java/com/iqbot/demo/StrategySelector.java app/src/test/java/com/iqbot/demo/StrategySmokeTest.java app/src/test/java/com/iqbot/demo/IndicatorTest.java app/src/test/java/com/iqbot/demo/CandleCsvValidationTest.java app/src/test/java/com/iqbot/demo/OutOfSampleTest.java app/src/test/java/com/iqbot/demo/SignalTimelineTest.java app/src/test/java/com/iqbot/demo/StrategySelectorTest.java
           java -cp /tmp/iqbot-classes com.iqbot.demo.StrategySmokeTest
           java -cp /tmp/iqbot-classes com.iqbot.demo.IndicatorTest
           java -cp /tmp/iqbot-classes com.iqbot.demo.CandleCsvValidationTest
           java -cp /tmp/iqbot-classes com.iqbot.demo.OutOfSampleTest
           java -cp /tmp/iqbot-classes com.iqbot.demo.SignalTimelineTest
+          java -cp /tmp/iqbot-classes com.iqbot.demo.StrategySelectorTest
