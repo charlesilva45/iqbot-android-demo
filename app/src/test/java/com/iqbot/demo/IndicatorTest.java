@@ -48,7 +48,7 @@ public final class IndicatorTest {
         // next delta -1: Wilder avg gain 8/9, loss 5/9 => RSI 800/13.
         near("mixed RSI3",invoke("rsi",mixed,4,3),800.0/13.0,1e-10);
         // ATR(3): each true range is 3, 2, 3 (after initial bar).
-        // Fourth true range is 2; Wilder update: (8*2+2)/9 = 2.
+        // Fourth true range is 2; Wilder update: ((8/3)*2+2)/3 = 22/9.
         near("mixed ATR3",invoke("atr",mixed,4,3),22.0/9.0,1e-12);
         if(!Double.isNaN(invoke("ema",flat,4,9))) throw new AssertionError("EMA warmup");
         if(!Double.isNaN(invoke("rsi",flat,10,14))) throw new AssertionError("RSI warmup");
