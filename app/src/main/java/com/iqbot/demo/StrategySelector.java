@@ -117,6 +117,51 @@ public final class StrategySelector {
         }
         return new Choice(model,s,s==StrategyEngine.Signal.WAIT?"Sem confirmação":"Sinal experimental com candles fechados");
     }
+    /** Trend gate based exclusively on observed closed M5 bars.
+     * Strength is a descriptive 0..3 count of consecutive directional candles,
+     * not a probability or prediction. Sudden bars relative to previous ATR pause signals.
+     */
+    public static final class Trend {
+        public final StrategyEngine.Signal direction;
+        public final int strength;
+        public final boolean shock;
+        Trend(StrategyEngine.Signal direction,int strength,boolean shock) {
+            this.direction=direction; this.strength=strength; this.shock=shock;
+        }
+    }
+    public static Trend trend(List<StrategyEngine.Candle> bars,int end) {
+        if(bars==null||end<0||end>=bars.size()) throw new IllegalArgumentException("Invalid trend input");
+        long previous=Long.MIN_VALUE;
+        for(int i=0;i<=end;i++) {
+            StrategyEngine.Candle bar=bars.get(i);
+            if(bar==null||Math.floorMod(bar.time,300000L)!=0||
+                    (i>0&&bar.time-previous!=300000L))
+                throw new IllegalArgumentException("Noncontiguous M5 trend input");
+            previous=bar.time;
+        }
+        if(end<40) return new Trend(StrategyEngine.Signal.WAIT,0,false);
+        // Previous ATR avoids using the shock candle to set its own threshold.
+        double priorAtr=atr(bars,end-1,14);
+        StrategyEngine.Candle last=bars.get(end);
+        double move=Math.abs(last.close-bars.get(end-1).close);
+        boolean shock=priorAtr>0&&(trueRange(bars,end)>3*priorAtr||move>2.5*priorAtr);
+        double fast=ema(bars,end,9),slow=ema(bars,end,21);
+        double oldFast=ema(bars,end-3,9),oldSlow=ema(bars,end-3,21);
+        StrategyEngine.Signal direction=fast>slow&&fast>oldFast&&slow>oldSlow?
+                StrategyEngine.Signal.CALL:fast<slow&&fast<oldFast&&slow<oldSlow?
+                StrategyEngine.Signal.PUT:StrategyEngine.Signal.WAIT;
+        int strength=0;
+        if(direction!=StrategyEngine.Signal.WAIT) {
+            for(int i=end;i>0&&strength<3;i--) {
+                StrategyEngine.Candle bar=bars.get(i);
+                boolean aligned=direction==StrategyEngine.Signal.CALL?
+                        bar.close>bar.open:bar.close<bar.open;
+                if(!aligned) break;
+                strength++;
+            }
+        }
+        return new Trend(shock?StrategyEngine.Signal.WAIT:direction,strength,shock);
+    }
     /** Fixed deterministic consensus, not a trained profitability ranking. */
     public static Recommendation recommend(List<StrategyEngine.Candle> bars,int end) {
         List<Choice> choices=new ArrayList<>();
@@ -129,8 +174,12 @@ public final class StrategySelector {
         }
         StrategyEngine.Signal consensus=calls>=3&&puts==0?StrategyEngine.Signal.CALL:
                 puts>=3&&calls==0?StrategyEngine.Signal.PUT:StrategyEngine.Signal.WAIT;
+        Trend trend=trend(bars,end);
+        if(trend.shock||consensus!=trend.direction||trend.strength==0)
+            consensus=StrategyEngine.Signal.WAIT;
         Choice selected=new Choice(null,consensus,consensus==StrategyEngine.Signal.WAIT?
-                "Aguardar: sem consenso de 3 estratégias":"Consenso experimental de pelo menos 3 estratégias");
+                (trend.shock?"Aguardar: movimento brusco detectado":"Aguardar: sem consenso ou sem confirmação da tendência"):
+                "Consenso experimental de pelo menos 3 estratégias a favor da tendência");
         return new Recommendation(selected,choices);
     }
 }
