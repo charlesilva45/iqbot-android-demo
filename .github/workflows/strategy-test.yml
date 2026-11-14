@@ -1,0 +1,19 @@
+name: Strategy engine smoke test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  strategy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile pure Java strategy and smoke test
+        run: |
+          mkdir -p /tmp/iqbot-classes
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/StrategyEngine.java app/src/main/java/com/iqbot/demo/CandleCsv.java app/src/test/java/com/iqbot/demo/StrategySmokeTest.java
+          java -cp /tmp/iqbot-classes com.iqbot.demo.StrategySmokeTest
