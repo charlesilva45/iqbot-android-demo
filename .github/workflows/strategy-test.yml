@@ -15,5 +15,6 @@ jobs:
       - name: Compile pure Java strategy and smoke test
         run: |
           mkdir -p /tmp/iqbot-classes
-          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/StrategyEngine.java app/src/main/java/com/iqbot/demo/CandleCsv.java app/src/test/java/com/iqbot/demo/StrategySmokeTest.java
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/StrategyEngine.java app/src/main/java/com/iqbot/demo/CandleCsv.java app/src/test/java/com/iqbot/demo/StrategySmokeTest.java app/src/test/java/com/iqbot/demo/IndicatorTest.java
           java -cp /tmp/iqbot-classes com.iqbot.demo.StrategySmokeTest
+          java -cp /tmp/iqbot-classes com.iqbot.demo.IndicatorTest
