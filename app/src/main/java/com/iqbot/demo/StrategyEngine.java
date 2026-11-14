@@ -102,12 +102,12 @@ public final class StrategyEngine {
             if (i>0 && m5.get(i).time<=m5.get(i-1).time) throw new IllegalArgumentException("Candles must be ordered");
             // Include M15 only when all three constituent M5 candles are closed at i.
             List<Candle> m15=new ArrayList<>();
-            for(int start=0;start+2<=i;start+=3) {
+            for(int start=0;start+2<=i;start++) {\n                if (Math.floorMod(m5.get(start).time, 900000L)!=0) continue;\n                if (m5.get(start+1).time-m5.get(start).time!=300000L || m5.get(start+2).time-m5.get(start+1).time!=300000L) continue;
                 Candle a=m5.get(start), b=m5.get(start+1), c=m5.get(start+2);
                 m15.add(new Candle(c.time,a.open,Math.max(a.high,Math.max(b.high,c.high)),
                     Math.min(a.low,Math.min(b.low,c.low)),c.close));
             }
-            Signal s=signal(m5,i,m15);
+            if (m15.size()<22) continue;\n            Signal s=signal(m5,i,m15);
             if(s==Signal.WAIT) continue;
             Candle next=m5.get(i+1);
             boolean win=s==Signal.CALL?next.close>next.open:next.close<next.open;
