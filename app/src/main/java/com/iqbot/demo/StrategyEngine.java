@@ -95,9 +95,13 @@ public final class StrategyEngine {
         if (!Double.isFinite(initialBalance) || !Double.isFinite(stake) || !Double.isFinite(payout) || !Double.isFinite(stopBalance) || initialBalance<=0 || stake<=0 || payout<0 || payout>1 || maxTrades<1)
             throw new IllegalArgumentException("Invalid simulation parameters");
         if (m5 == null) throw new IllegalArgumentException("Missing candles");
-        for (int j=1;j<m5.size();j++) {
-            if (m5.get(j).time-m5.get(j-1).time!=300000L || Math.floorMod(m5.get(j).time,300000L)!=0)
-                throw new IllegalArgumentException("M5 candles must be contiguous and aligned");
+        // Validate the entire input, including the first candle and short datasets.
+        for (int j=0;j<m5.size();j++) {
+            Candle current=m5.get(j);
+            if (current == null || Math.floorMod(current.time,300000L)!=0)
+                throw new IllegalArgumentException("M5 candles must be non-null and aligned");
+            if (j>0 && current.time-m5.get(j-1).time!=300000L)
+                throw new IllegalArgumentException("M5 candles must be contiguous and ordered");
         }
         List<Trade> trades=new ArrayList<>();
         double balance=initialBalance, peak=balance, maxDD=0;
