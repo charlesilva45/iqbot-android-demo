@@ -92,8 +92,13 @@ public final class StrategyEngine {
      */
     public static Report backtest(List<Candle> m5, double initialBalance, double stake, double payout,
                                   double stopBalance, int maxTrades) {
-        if (initialBalance<=0 || stake<=0 || payout<0 || payout>1 || maxTrades<1)
+        if (!Double.isFinite(initialBalance) || !Double.isFinite(stake) || !Double.isFinite(payout) || !Double.isFinite(stopBalance) || initialBalance<=0 || stake<=0 || payout<0 || payout>1 || maxTrades<1)
             throw new IllegalArgumentException("Invalid simulation parameters");
+        if (m5 == null) throw new IllegalArgumentException("Missing candles");
+        for (int j=1;j<m5.size();j++) {
+            if (m5.get(j).time-m5.get(j-1).time!=300000L || Math.floorMod(m5.get(j).time,300000L)!=0)
+                throw new IllegalArgumentException("M5 candles must be contiguous and aligned");
+        }
         List<Trade> trades=new ArrayList<>();
         double balance=initialBalance, peak=balance, maxDD=0;
         int wins=0, losses=0, ties=0;
