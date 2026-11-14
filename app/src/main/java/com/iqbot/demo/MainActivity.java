@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -43,24 +45,47 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(32, 44, 32, 32);
-        root.setBackgroundColor(Color.rgb(15, 23, 42));
+        root.setPadding(dp(20), dp(30), dp(20), dp(28));
+        root.setBackgroundColor(Color.rgb(9, 15, 29));
         scroll.addView(root);
-        TextView title = label("IQBot 0.2 • DEMO", 26, Color.WHITE);
+        TextView brand = label("IQBOT   /   LAB", 14, Color.rgb(103, 232, 249));
+        brand.setTypeface(null, android.graphics.Typeface.BOLD);
+        root.addView(brand);
+        TextView title = label("Painel de simulação", 28, Color.WHITE);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, dp(8), 0, dp(8));
         root.addView(title);
-        root.addView(label("SIMULAÇÃO LOCAL • nenhuma ordem real", 13, Color.rgb(148,163,184)));
-        summary = label("", 20, Color.WHITE);
-        summary.setPadding(0, 28, 0, 18);
-        root.addView(summary);
+        TextView badge = label("●  MODO DEMONSTRAÇÃO  •  SEM ORDENS REAIS", 11, Color.rgb(165, 243, 209));
+        badge.setPadding(dp(12), dp(10), dp(12), dp(10));
+        badge.setBackground(surface(Color.rgb(17, 54, 51), 14));
+        root.addView(badge);
+        LinearLayout balanceCard = new LinearLayout(this);
+        balanceCard.setOrientation(LinearLayout.VERTICAL);
+        balanceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        balanceCard.setBackground(surface(Color.rgb(22, 34, 55), 20));
+        LinearLayout.LayoutParams cardSpacing = new LinearLayout.LayoutParams(-1, -2);
+        cardSpacing.topMargin = dp(18);
+        root.addView(balanceCard, cardSpacing);
+        balanceCard.addView(label("CARTEIRA VIRTUAL", 12, Color.rgb(148, 163, 184)));
+        summary = label("", 23, Color.WHITE);
+        summary.setTypeface(null, android.graphics.Typeface.BOLD);
+        summary.setPadding(0, dp(12), 0, dp(4));
+        balanceCard.addView(summary);
+        TextView chartTitle = label("Evolução do saldo fictício", 17, Color.WHITE);
+        chartTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        chartTitle.setPadding(0, dp(24), 0, dp(12));
+        root.addView(chartTitle);
         chart = new EquityChart();
-        root.addView(chart, new LinearLayout.LayoutParams(-1, 230));
-        Button single = new Button(this);
-        single.setText("Simular operação de R$ 2");
-        root.addView(single);
+        chart.setBackground(surface(Color.rgb(22, 34, 55), 20));
+        root.addView(chart, new LinearLayout.LayoutParams(-1, dp(220)));
+        TextView actions = label("CONTROLES DA SIMULAÇÃO", 12, Color.rgb(148, 163, 184));
+        actions.setPadding(0, dp(24), 0, dp(8));
+        root.addView(actions);
+        Button single = actionButton("Simular uma operação", Color.rgb(8, 145, 178), Color.WHITE);
+        root.addView(single, buttonParams());
         single.setOnClickListener(v -> { if (!automatic) simulate(); });
-        autoButton = new Button(this);
-        autoButton.setText("Iniciar 10 simulações automáticas");
-        root.addView(autoButton);
+        autoButton = actionButton("Iniciar 10 simulações automáticas", Color.rgb(30, 41, 59), Color.WHITE);
+        root.addView(autoButton, buttonParams());
         autoButton.setOnClickListener(v -> {
             if (automatic) stopAuto();
             else {
@@ -70,15 +95,20 @@ public class MainActivity extends Activity {
                 handler.post(autoTick);
             }
         });
-        Button reset = new Button(this);
-        reset.setText("Reiniciar saldo e histórico");
-        root.addView(reset);
+        Button reset = actionButton("Reiniciar dados fictícios", Color.rgb(30, 41, 59), Color.rgb(203, 213, 225));
+        root.addView(reset, buttonParams());
         reset.setOnClickListener(v -> reset());
-        root.addView(label("Histórico de simulações", 18, Color.WHITE));
-        history = label("Nenhuma operação ainda.", 15, Color.rgb(203,213,225));
-        history.setPadding(0, 12, 0, 20);
+        TextView historyTitle = label("Histórico de operações", 17, Color.WHITE);
+        historyTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        historyTitle.setPadding(0, dp(22), 0, dp(10));
+        root.addView(historyTitle);
+        history = label("Nenhuma operação ainda.", 14, Color.rgb(203, 213, 225));
+        history.setPadding(dp(16), dp(16), dp(16), dp(16));
+        history.setBackground(surface(Color.rgb(22, 34, 55), 18));
         root.addView(history);
-        root.addView(label("Resultados aleatórios (50% de chance). Ganho fictício +R$ 1,60; perda fictícia -R$ 2,00. Limite automático: 10 operações ou saldo de R$ 90. Não utiliza preços de mercado nem API da IQ Option.", 13, Color.rgb(148,163,184)));
+        TextView disclaimer = label("SIMULAÇÃO LOCAL: resultados aleatórios, sem dados de mercado. Cada operação fictícia usa R$ 2, com retorno de R$ 1,60 em caso de acerto e perda de R$ 2 em caso de erro. Limite de 10 operações ou saldo de R$ 90. Não há integração com corretoras.", 12, Color.rgb(148, 163, 184));
+        disclaimer.setPadding(0, dp(20), 0, dp(10));
+        root.addView(disclaimer);
         setContentView(scroll);
         refresh();
     }
@@ -86,6 +116,30 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(text); t.setTextSize(size); t.setTextColor(color);
         return t;
+    }
+    private int dp(int value) {
+        return (int)(getResources().getDisplayMetrics().density * value + 0.5f);
+    }
+    private GradientDrawable surface(int color, int radius) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(color);
+        shape.setCornerRadius(dp(radius));
+        return shape;
+    }
+    private Button actionButton(String text, int background, int foreground) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setTextColor(foreground);
+        button.setTextSize(14);
+        button.setBackground(surface(background, 14));
+        button.setMinHeight(dp(52));
+        return button;
+    }
+    private LinearLayout.LayoutParams buttonParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(52));
+        params.topMargin = dp(10);
+        return params;
     }
     private void simulate() {
         if (balance < 2 || balance <= 90) { stopAuto(); return; }
@@ -98,7 +152,7 @@ public class MainActivity extends Activity {
         refresh();
     }
     private void refresh() {
-        summary.setText(String.format(Locale.forLanguageTag("pt-BR"), "Saldo fictício: R$ %.2f\nOperações: %d  •  Vitórias: %d\nResultado: R$ %.2f", balance, operations, wins, balance - 100));
+        summary.setText(String.format(Locale.forLanguageTag("pt-BR"), "R$ %.2f\n%d operações   •   %d vitórias\nResultado: %+.2f R$", balance, operations, wins, balance - 100));
         history.setText(log.length() == 0 ? "Nenhuma operação ainda." : log.toString());
         chart.invalidate();
     }
@@ -120,7 +174,7 @@ public class MainActivity extends Activity {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float w = getWidth(), h = getHeight(), pad = 24;
-            canvas.drawColor(Color.rgb(30,41,59));
+            // Parent view provides the rounded card background.
             p.setColor(Color.rgb(100,116,139)); p.setStrokeWidth(2);
             canvas.drawLine(pad, h/2, w-pad, h/2, p);
             if (equity.size() < 2) return;
