@@ -68,6 +68,21 @@ public final class StrategySmokeTest {
                 throw new AssertionError("Future candle changed historical trade");
             a++; b++;
         }
-        System.out.println("PASS: CSV, gap rejection, accounting, parameter validation, timeline, future-data isolation");
+        // CALL-only contract of the actual engine used by BacktestActivity.
+        // A falling series may produce WAIT, but never a PUT trade.
+        java.util.List<StrategyEngine.Candle> falling=new java.util.ArrayList<>();
+        for(int i=0;i<240;i++) {
+            double open=200-i*0.2;
+            double close=open-0.15;
+            falling.add(new StrategyEngine.Candle(start+i*300000L,open,open+0.05,close-0.05,close));
+        }
+        StrategyEngine.Report bearish=StrategyEngine.backtestWithRiskFloor(falling,100,2,0.8,90,10);
+        for(StrategyEngine.Trade trade:bearish.trades)
+            if(trade.direction!=StrategyEngine.Signal.CALL)
+                throw new AssertionError("Non-CALL trade in backtest");
+        for(StrategyEngine.Trade trade:report.trades)
+            if(trade.direction!=StrategyEngine.Signal.CALL)
+                throw new AssertionError("Non-CALL trade in sample");
+        System.out.println("PASS: CSV, gap rejection, accounting, parameter validation, timeline, future-data isolation, CALL-only");
     }
 }
