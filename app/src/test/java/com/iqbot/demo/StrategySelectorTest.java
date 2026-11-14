@@ -33,6 +33,17 @@ public final class StrategySelectorTest {
         check(before.selected.signal==after.selected.signal,"Future candle leakage");
         for(int i=0;i<5;i++)
             check(before.candidates.get(i).signal==after.candidates.get(i).signal,"Future candidate leakage");
+        StrategySelector.Trend up=StrategySelector.trend(b,80);
+        check(up.direction==StrategyEngine.Signal.CALL,"Uptrend should be CALL");
+        // A single sudden downward candle must pause even a previously rising trend.
+        List<StrategyEngine.Candle> shock=bars(100);
+        double prior=shock.get(98).close;
+        shock.set(99,new StrategyEngine.Candle(99*300000L,prior,prior+0.4,prior-20,prior-19));
+        check(StrategySelector.trend(shock,99).shock,"Downward shock not detected");
+        check(StrategySelector.recommend(shock,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Shock must block recommendation");
+        // The strength label counts directional candles, never future bars.
+        check(up.strength>=0&&up.strength<=3,"Invalid trend strength");
         // The selector rejects a missing M5 candle in the observed prefix.
         List<StrategyEngine.Candle> gap=bars(100);
         gap.remove(20);
