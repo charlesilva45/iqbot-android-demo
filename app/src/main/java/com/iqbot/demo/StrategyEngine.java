@@ -10,7 +10,7 @@ public final class StrategyEngine {
         public final long time;
         public final double open, high, low, close;
         public Candle(long time, double open, double high, double low, double close) {
-            if (!(low <= Math.min(open, close) && high >= Math.max(open, close)) || !Double.isFinite(close) || close <= 0)
+            if (!Double.isFinite(open) || !Double.isFinite(high) || !Double.isFinite(low) || !Double.isFinite(close) || low <= 0 || !(low <= Math.min(open, close) && high >= Math.max(open, close)))
                 throw new IllegalArgumentException("Invalid OHLC");
             this.time=time; this.open=open; this.high=high; this.low=low; this.close=close;
         }
@@ -121,7 +121,7 @@ public final class StrategyEngine {
             if(tie) ties++;
             peak=Math.max(peak,balance);
             maxDD=Math.max(maxDD,peak-balance);
-            trades.add(new Trade(next.time,next.time,s,next.open,next.close,pnl));
+            trades.add(new Trade(next.time,next.time+300000L,s,next.open,next.close,pnl));
             i++; // avoid immediately reusing a settlement candle for the next signal
         }
         return new Report(trades,balance,maxDD,wins,losses,ties);
