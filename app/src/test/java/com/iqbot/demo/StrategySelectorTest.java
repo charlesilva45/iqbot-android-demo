@@ -21,10 +21,14 @@ public final class StrategySelectorTest {
         StrategySelector.Recommendation r=StrategySelector.recommend(b,99);
         check(r.candidates.size()==5,"Five candidates required");
         check(r.selected.signal==StrategyEngine.Signal.WAIT
-                || r.selected.signal==StrategyEngine.Signal.CALL
-                || r.selected.signal==StrategyEngine.Signal.PUT,"Invalid recommendation");
+                || r.selected.signal==StrategyEngine.Signal.CALL,"Selected recommendation must be CALL or WAIT");
         for(StrategySelector.Model m:StrategySelector.Model.values()) {
             check(StrategySelector.evaluate(m,b,10).signal==StrategyEngine.Signal.WAIT,"Warmup");
+        }
+        // Every completed prefix in a rising series must also exclude PUT.
+        for(int end=40;end<100;end++) {
+            StrategyEngine.Signal selected=StrategySelector.recommend(b,end).selected.signal;
+            check(selected!=StrategyEngine.Signal.PUT,"PUT on rising prefix "+end);
         }
         // Future candles must not change a past recommendation.
         StrategySelector.Recommendation before=StrategySelector.recommend(b,80);
