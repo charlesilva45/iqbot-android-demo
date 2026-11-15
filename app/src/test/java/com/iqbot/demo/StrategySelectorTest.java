@@ -83,6 +83,16 @@ public final class StrategySelectorTest {
         try { StrategySelector.recommend(gap,80); }
         catch(IllegalArgumentException expected) { rejected=true; }
         check(rejected,"Missing candle accepted");
+        // A caller must not be able to alter the diagnostic candidates after selection.
+        boolean immutable=false;
+        try { r.candidates.clear(); }
+        catch(UnsupportedOperationException expected) { immutable=true; }
+        check(immutable,"Candidate list must be immutable");
+        // Invalid future index must fail closed rather than inspecting unseen candles.
+        boolean futureRejected=false;
+        try { StrategySelector.recommend(b,b.size()); }
+        catch(IllegalArgumentException expected) { futureRejected=true; }
+        check(futureRejected,"Future end index accepted");
         System.out.println("PASS: five models, warmup, future isolation, missing M5 rejection");
     }
 }
