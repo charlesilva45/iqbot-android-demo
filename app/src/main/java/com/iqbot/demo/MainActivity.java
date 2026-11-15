@@ -1,6 +1,7 @@
 package com.iqbot.demo;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.widget.Toast;
@@ -109,7 +110,12 @@ public class MainActivity extends Activity {
         });
         Button reset = actionButton("Reiniciar dados fictícios", Color.rgb(30, 41, 59), Color.rgb(203, 213, 225));
         root.addView(reset, buttonParams());
-        reset.setOnClickListener(v -> reset());
+        reset.setOnClickListener(v -> new AlertDialog.Builder(this)
+            .setTitle("Reiniciar simulação?")
+            .setMessage("O saldo e o histórico fictícios desta sessão serão apagados. Nenhuma ordem real será afetada.")
+            .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+            .setPositiveButton("Reiniciar", (dialog, which) -> reset())
+            .show());
         TextView accessTitle = label("ACESSO À CORRETORA", 12, Color.rgb(148, 163, 184));
         accessTitle.setPadding(0, dp(24), 0, dp(8));
         root.addView(accessTitle);
