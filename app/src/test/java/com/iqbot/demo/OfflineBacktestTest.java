@@ -82,7 +82,25 @@ public final class OfflineBacktestTest {
         StrategyEngine.Report flatReport = StrategyEngine.backtestWithRiskFloor(flat, 100, 2, 0.8, 90, 10);
         require(flatReport.trades.isEmpty() && flatReport.finalBalance == 100,
                 "Flat market must abstain without consuming risk");
+        // Reject non-finite and invalid risk inputs before any simulation can start.
+        assertRiskRejected(flat, Double.NaN, 2, 0.8, 90, 10, "NaN balance");
+        assertRiskRejected(flat, 100, Double.POSITIVE_INFINITY, 0.8, 90, 10, "infinite stake");
+        assertRiskRejected(flat, 100, 2, Double.NaN, 90, 10, "NaN payout");
+        assertRiskRejected(flat, 100, 2, 1.01, 90, 10, "payout over 100 percent");
+        assertRiskRejected(flat, 100, 2, 0.8, 100, 10, "floor at initial balance");
+        assertRiskRejected(flat, 100, 2, 0.8, 90, 0, "zero trade cap");
         System.out.println("PASS: offline CSV, indicator snapshot, trade cap, and prospective risk floor");
+    }
+
+    private static void assertRiskRejected(List<StrategyEngine.Candle> candles,
+                                           double balance, double stake, double payout,
+                                           double floor, int maxTrades, String description) {
+        try {
+            StrategyEngine.backtestWithRiskFloor(candles, balance, stake, payout, floor, maxTrades);
+            throw new AssertionError("Accepted invalid risk parameters: " + description);
+        } catch (IllegalArgumentException expected) {
+            // Invalid inputs must fail closed, without any simulated trade.
+        }
     }
 
     private static void assertCsvRejected(String csv, String description) throws Exception {
