@@ -95,7 +95,10 @@ public class MainActivity extends Activity {
         autoButton.setOnClickListener(v -> {
             if (automatic) stopAuto();
             else {
-                if (operations >= 10 || balance - 2 < 90) { reset(); }
+                if (operations >= 10 || balance - 2 < 90) {
+                    Toast.makeText(this, "Limite atingido. Use Reiniciar dados fictícios para começar uma nova sessão.", Toast.LENGTH_LONG).show();
+                    return;
+                }
                 automatic = true;
                 autoButton.setText("Parar simulação");
                 handler.post(autoTick);
