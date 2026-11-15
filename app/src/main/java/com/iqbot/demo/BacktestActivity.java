@@ -43,7 +43,7 @@ public final class BacktestActivity extends Activity {
         Button back = button(content, "Voltar ao painel");
         back.setOnClickListener(v -> finish());
         label(content, "Backtest offline", 28);
-        label(content, "Saldo inicial fictício de R$ 100. Entrada na abertura do candle M5 seguinte ao sinal e liquidação no fechamento. Empates contam como perdas.", 15);
+        label(content, "SIMULAÇÃO OFFLINE · SEM ORDENS REAIS. Apenas sinais CALL em tendência de alta; sem PUT. Saldo inicial fictício de R$ 100. Entrada na abertura do candle M5 seguinte ao sinal e liquidação no fechamento. Empates contam como perdas. Resultados históricos não garantem ganhos.", 15);
         source = label(content, "", 16);
         importCsv = button(content, "Selecionar CSV local");
         importCsv.setOnClickListener(v -> {
