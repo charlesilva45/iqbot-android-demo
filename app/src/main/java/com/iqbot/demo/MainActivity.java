@@ -62,8 +62,11 @@ public class MainActivity extends Activity {
         badge.setPadding(dp(12), dp(10), dp(12), dp(10));
         badge.setBackground(surface(Color.rgb(17, 54, 51), 14));
         root.addView(badge);
-        Button backtest = actionButton("Abrir backtest offline", Color.rgb(8, 145, 178), Color.WHITE);
+        Button backtest = actionButton("Executar estratégia CALL/WAIT (offline)", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(backtest, buttonParams());
+        TextView strategyNote = label("Este é o motor de sinais CALL/WAIT com candles M5/M15 fechados. Importe CSV para avaliar dados históricos; nenhuma ordem é enviada.", 12, Color.rgb(148, 163, 184));
+        strategyNote.setPadding(0, dp(8), 0, dp(4));
+        root.addView(strategyNote);
         backtest.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
         LinearLayout balanceCard = new LinearLayout(this);
         balanceCard.setOrientation(LinearLayout.VERTICAL);
@@ -84,7 +87,7 @@ public class MainActivity extends Activity {
         chart = new EquityChart();
         chart.setBackground(surface(Color.rgb(22, 34, 55), 20));
         root.addView(chart, new LinearLayout.LayoutParams(-1, dp(220)));
-        TextView actions = label("CONTROLES DA SIMULAÇÃO", 12, Color.rgb(148, 163, 184));
+        TextView actions = label("DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)", 12, Color.rgb(148, 163, 184));
         actions.setPadding(0, dp(24), 0, dp(8));
         root.addView(actions);
         Button single = actionButton("Simular operação aleatória", Color.rgb(8, 145, 178), Color.WHITE);
