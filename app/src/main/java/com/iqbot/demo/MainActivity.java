@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
         @Override public void run() {
             if (!automatic) return;
             simulate();
-            if (operations >= 10 || balance < 2 || balance <= 90) {
+            if (operations >= 10 || balance < 2 || balance - 2 < 90) {
                 stopAuto();
             } else handler.postDelayed(this, 1200);
         }
@@ -87,7 +87,7 @@ public class MainActivity extends Activity {
         TextView actions = label("CONTROLES DA SIMULAÇÃO", 12, Color.rgb(148, 163, 184));
         actions.setPadding(0, dp(24), 0, dp(8));
         root.addView(actions);
-        Button single = actionButton("Simular uma operação", Color.rgb(8, 145, 178), Color.WHITE);
+        Button single = actionButton("Simular operação aleatória", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(single, buttonParams());
         single.setOnClickListener(v -> { if (!automatic) simulate(); });
         autoButton = actionButton("Iniciar 10 simulações automáticas", Color.rgb(30, 41, 59), Color.WHITE);
@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
         autoButton.setOnClickListener(v -> {
             if (automatic) stopAuto();
             else {
-                if (operations >= 10) { reset(); }
+                if (operations >= 10 || balance - 2 < 90) { reset(); }
                 automatic = true;
                 autoButton.setText("Parar simulação");
                 handler.post(autoTick);
@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
         return params;
     }
     private void simulate() {
-        if (balance < 2 || balance <= 90) { stopAuto(); return; }
+        if (operations >= 10 || balance < 2 || balance - 2 < 90) { stopAuto(); return; }
         boolean win = random.nextBoolean();
         balance += win ? 1.60 : -2.00;
         operations++;
