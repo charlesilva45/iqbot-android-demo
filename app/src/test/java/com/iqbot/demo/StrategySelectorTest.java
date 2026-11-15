@@ -52,6 +52,13 @@ public final class StrategySelectorTest {
         }
         check(StrategySelector.trend(falling,99).direction==StrategyEngine.Signal.PUT,
                 "Downtrend misclassified");
+        // PUT candidates may be diagnosed but the selected executable signal is CALL/WAIT only.
+        check(StrategySelector.recommend(falling,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Bearish consensus must not issue PUT");
+        for(int end=40;end<100;end++) {
+            StrategyEngine.Signal selected=StrategySelector.recommend(falling,end).selected.signal;
+            check(selected!=StrategyEngine.Signal.PUT,"PUT recommendation at candle "+end);
+        }
         // Upward shocks are blocked just like sudden drops.
         List<StrategyEngine.Candle> spike=bars(100);
         double previous=spike.get(98).close;
