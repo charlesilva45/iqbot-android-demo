@@ -64,6 +64,24 @@ public final class OfflineBacktestTest {
         assertCsvRejected(header + "0,100,101,101,100\n", "low above open");
         assertCsvRejected(header + "0,100,NaN,99,100\n", "non-finite high");
         assertCsvRejected(header + "0,100,101,99,Infinity\n", "non-finite close");
+        // Independent reference series: constant close, fixed high/low, no bullish trend.
+        // EMA(9/21) = 100, RSI(14) = 50, ATR(14) = 2 by definition.
+        java.util.ArrayList<StrategyEngine.Candle> flat = new java.util.ArrayList<>();
+        for (int i = 0; i < 90; i++) {
+            flat.add(new StrategyEngine.Candle(1_800_000_000_000L + i * 300_000L,
+                    100, 101, 99, 100));
+        }
+        StrategyEngine.Indicators flatIndicators = StrategyEngine.indicators(flat);
+        require(Math.abs(flatIndicators.ema9 - 100) < 1e-12
+                && Math.abs(flatIndicators.ema21 - 100) < 1e-12,
+                "Constant-price EMA reference");
+        require(Math.abs(flatIndicators.rsi14 - 50) < 1e-12,
+                "Flat-price RSI reference");
+        require(Math.abs(flatIndicators.atr14 - 2) < 1e-12,
+                "Constant true-range ATR reference");
+        StrategyEngine.Report flatReport = StrategyEngine.backtestWithRiskFloor(flat, 100, 2, 0.8, 90, 10);
+        require(flatReport.trades.isEmpty() && flatReport.finalBalance == 100,
+                "Flat market must abstain without consuming risk");
         System.out.println("PASS: offline CSV, indicator snapshot, trade cap, and prospective risk floor");
     }
 
