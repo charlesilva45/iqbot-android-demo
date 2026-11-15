@@ -32,6 +32,16 @@ jobs:
           for test in app/src/test/java/com/iqbot/demo/*Test.java; do
             java -cp /tmp/iqbot-classes "com.iqbot.demo.$(basename "$test" .java)"
           done
+      - name: Verify UI strategy entry and broker isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          UI=app/src/main/java/com/iqbot/demo/MainActivity.java
+          test -f app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          grep -Fq 'new Intent(this, BacktestActivity.class)' "$UI"
+          grep -Fq 'DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)' "$UI"
+          grep -Fq 'Abrir o site não conecta sua conta ao IQBot.' "$UI"
+          grep -Fq 'Intent.ACTION_VIEW' "$UI"
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
       - name: Verify APK identity and version
