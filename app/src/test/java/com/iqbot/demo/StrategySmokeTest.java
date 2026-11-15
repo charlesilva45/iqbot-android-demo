@@ -68,6 +68,33 @@ public final class StrategySmokeTest {
                 throw new AssertionError("Future candle changed historical trade");
             a++; b++;
         }
+        // A direct M5/M15 signal must reject future or gapped higher-timeframe bars.
+        java.util.List<StrategyEngine.Candle> closedM15=new java.util.ArrayList<>();
+        for(int i=0;i<24;i++) {
+            int j=i*3;
+            StrategyEngine.Candle x=candles.get(j), y=candles.get(j+1), z=candles.get(j+2);
+            closedM15.add(new StrategyEngine.Candle(z.time,x.open,
+                Math.max(x.high,Math.max(y.high,z.high)),
+                Math.min(x.low,Math.min(y.low,z.low)),z.close));
+        }
+        boolean futureM15=false;
+        try { StrategyEngine.signal(candles,68,closedM15); }
+        catch(IllegalArgumentException expected) { futureM15=true; }
+        if(!futureM15) throw new AssertionError("Future M15 candle accepted");
+        boolean gappedM15=false;
+        java.util.List<StrategyEngine.Candle> gapped=new java.util.ArrayList<>(closedM15.subList(0,22));
+        gapped.remove(8);
+        try { StrategyEngine.signal(candles,68,gapped); }
+        catch(IllegalArgumentException expected) { gappedM15=true; }
+        if(!gappedM15) throw new AssertionError("Gapped M15 timeline accepted");
+        // Appending later candles cannot change indicators computed on a closed prefix.
+        StrategyEngine.Indicators prefix=StrategyEngine.indicators(candles.subList(0,180));
+        StrategyEngine.Indicators samePrefix=StrategyEngine.indicators(altered.subList(0,180));
+        if(Double.compare(prefix.ema9,samePrefix.ema9)!=0 ||
+           Double.compare(prefix.ema21,samePrefix.ema21)!=0 ||
+           Double.compare(prefix.rsi14,samePrefix.rsi14)!=0 ||
+           Double.compare(prefix.atr14,samePrefix.atr14)!=0)
+            throw new AssertionError("Future data changed closed-prefix indicators");
         // CALL-only contract of the actual engine used by BacktestActivity.
         // A falling series may produce WAIT, but never a PUT trade.
         java.util.List<StrategyEngine.Candle> falling=new java.util.ArrayList<>();
