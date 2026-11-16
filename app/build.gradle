@@ -6,6 +6,7 @@ android {
         applicationId 'com.iqbot.demo.lab'
         minSdk 26
         targetSdk 35
+        testInstrumentationRunner 'com.iqbot.demo.ReplayInstrumentation'
         versionCode 5
         versionName '0.4.1'
     }
