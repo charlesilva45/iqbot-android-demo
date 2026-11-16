@@ -126,6 +126,13 @@ public final class BacktestActivity extends Activity {
                 StrategyEngine.Report report = StrategyEngine.backtestWithRiskFloor(
                         input, 100, amount, rate / 100, 100 - loss, limit);
                 StrategyEngine.Indicators indicators = StrategyEngine.indicators(input);
+                // Diagnostic signal from the final CLOSED M5 bar; never sends an order.
+                StrategySelector.Recommendation recommendation =
+                        StrategySelector.recommend(input, input.size() - 1);
+                String signal = recommendation.selected.signal == StrategyEngine.Signal.CALL
+                        ? "CALL (apenas estudo; nenhuma ordem)"
+                        : "WAIT (sem entrada)";
+
                 int total = report.trades.size();
                 String accuracy = total == 0 ? "—" : String.format(PT_BR, "%.1f%%", 100.0 * report.wins / total);
                 String output = String.format(PT_BR,
@@ -133,7 +140,7 @@ public final class BacktestActivity extends Activity {
                                 + "Operações: %d · Acertos: %d · Perdas: %d\nEmpates incluídos nas perdas: %d\nTaxa de acerto: %s\n\n"
                                 + "Último candle M5 fechado\nEMA 9: %.6g · EMA 21: %.6g\nRSI 14: %.2f · ATR 14: %.6g",
                         report.finalBalance, report.finalBalance - 100, report.maxDrawdown,
-                        total, report.wins, report.losses, report.ties, accuracy,
+                        total, report.wins, report.losses, report.ties, accuracy, signal,
                         indicators.ema9, indicators.ema21, indicators.rsi14, indicators.atr14);
                 String message = amount > loss ? "Valor por operação excede a perda disponível. Nenhuma entrada autorizada."
                         : total == 0 ? "Nenhuma entrada simulada nas condições selecionadas." : "Backtest concluído.";
