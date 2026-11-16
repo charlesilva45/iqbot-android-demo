@@ -53,6 +53,24 @@ jobs:
           grep -Fq 'OfflineBacktest.sample()' "$UI"
           grep -Fq 'série SINTÉTICA' "$UI"
           grep -Fq 'preview.selected.signal == StrategyEngine.Signal.CALL' "$UI"
+      - name: Verify offline-only Android manifest security
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("app/src/main/AndroidManifest.xml").getroot()
+          android = "{http://schemas.android.com/apk/res/android}"
+          permissions = [node.get(android + "name", "") for node in root if node.tag in ("uses-permission", "uses-permission-sdk-23")]
+          assert "android.permission.INTERNET" not in permissions, "Offline build must not request network access"
+          assert "android.permission.ACCESS_NETWORK_STATE" not in permissions, "Offline build must not request network state"
+          app = root.find("application")
+          assert app is not None and app.get(android + "usesCleartextTraffic") == "false", "Cleartext traffic must be disabled"
+          activities = {node.get(android + "name"): node for node in app.findall("activity")}
+          assert activities.get(".BacktestActivity") is not None, "Backtest activity missing"
+          assert activities[".BacktestActivity"].get(android + "exported") == "false", "Backtest activity must remain private"
+          print("PASS: offline manifest has no network permission; backtest is private; cleartext disabled")
+          PY
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
       - name: Verify APK identity and version
