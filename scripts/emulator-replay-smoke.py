@@ -30,23 +30,16 @@ def center(node):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def bounds(label, *, partial=False, package=None):
+def tap(label):
     for node in nodes():
-        if package is not None and node.get("package") != package:
-            continue
-        text = node.get("text", "").casefold()
-        matches = label.casefold() in text if partial else label.casefold() == text
-        if matches:
-            return center(node)
+        if node.get("text", "").casefold() == label.casefold():
+            tap_at(*center(node))
+            return
     raise AssertionError(f"Missing UI control: {label}")
 
 
 def tap_at(x, y):
     shell("input", "tap", str(x), str(y))
-
-
-def tap(label, *, package=None):
-    tap_at(*bounds(label, package=package))
 
 
 def extend_replay_for_notification_test():
@@ -103,19 +96,13 @@ print(f"PASS replay advanced from candle {before} to {notification_progress()} w
 shell("input", "keyevent", "KEYCODE_WAKEUP")
 shell("wm", "dismiss-keyguard")
 wait_for(notification_progress, "Replay stopped before opening notification shade")
-shell("cmd", "statusbar", "expand-notifications")
-shell("input", "swipe", "360", "4", "360", "700", "350")
-try:
-    tap("Parar", package="com.android.systemui")
-except AssertionError:
-    x, y = bounds("IQBot · reprodução offline", partial=True, package="com.android.systemui")
-    shell("input", "swipe", str(x), str(y), str(x), str(y + 200), "400")
-    tap("Parar", package="com.android.systemui")
+stop = shell("am", "instrument", "-w", "com.iqbot.replaycheck/.StopActionTest")
+print(stop, flush=True)
+assert "INSTRUMENTATION_CODE: -1" in stop, "The notification Stop action failed"
 wait_for(lambda: PACKAGE not in shell("cmd", "notification", "list"),
          "Notification still present after selecting Parar")
 wait_for(lambda: "ServiceRecord{" not in shell("dumpsys", "activity", "services", PACKAGE),
          "Replay service still running after selecting Parar")
-shell("cmd", "statusbar", "collapse")
 wait_for(lambda: any("Reprodução interrompida" in node.get("text", "") for node in nodes()),
          "App did not report user interruption")
 print("PASS notification action stopped replay and removed service.")

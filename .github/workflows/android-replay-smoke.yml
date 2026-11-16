@@ -2,7 +2,7 @@ name: Android replay smoke test
 on:
   push:
     branches: ['feature/iqbot-0-4-offline-replay']
-    paths: ['.github/workflows/android-replay-smoke.yml', 'scripts/emulator-replay-smoke.py']
+    paths: ['.github/workflows/android-replay-smoke.yml', 'scripts/emulator-replay-smoke.py', 'scripts/android-replay-check/**']
   workflow_dispatch:
     inputs:
       build_run:
@@ -38,7 +38,7 @@ jobs:
           export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           command_tools="$ANDROID_HOME/cmdline-tools/latest/bin"
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
-          "$command_tools/sdkmanager" 'emulator' 'platform-tools' "$IMAGE"
+          "$command_tools/sdkmanager" 'emulator' 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' "$IMAGE"
           export ANDROID_USER_HOME="$RUNNER_TEMP/android-user"
           export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
           unset ANDROID_SDK_HOME
@@ -54,6 +54,7 @@ jobs:
             sleep 2
           done
           [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]
+          bash scripts/android-replay-check/install.sh
           python3 scripts/emulator-replay-smoke.py verified-build/app/build/outputs/apk/debug/app-debug.apk
       - name: Capture emulator diagnostics
         if: failure()
