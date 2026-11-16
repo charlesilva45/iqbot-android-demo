@@ -69,6 +69,19 @@ public class MainActivity extends Activity {
         strategyNote.setPadding(0, dp(8), 0, dp(4));
         root.addView(strategyNote);
         backtest.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
+        // This panel uses the same selector as the offline backtest, not the random demo.
+        // The bundled candles are synthetic and must never be presented as live quotes.
+        java.util.List<StrategyEngine.Candle> previewCandles = OfflineBacktest.sample();
+        StrategySelector.Recommendation preview =
+                StrategySelector.recommend(previewCandles, previewCandles.size() - 1);
+        String previewSignal = preview.selected.signal == StrategyEngine.Signal.CALL ? "CALL" : "WAIT";
+        TextView previewLabel = label(
+                "SINAL DO MOTOR: " + previewSignal
+                        + " · série SINTÉTICA, último M5 fechado · apenas estudo, sem ordem",
+                13, Color.rgb(165, 243, 209));
+        previewLabel.setPadding(0, dp(10), 0, dp(10));
+        root.addView(previewLabel);
+
         LinearLayout balanceCard = new LinearLayout(this);
         balanceCard.setOrientation(LinearLayout.VERTICAL);
         balanceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
