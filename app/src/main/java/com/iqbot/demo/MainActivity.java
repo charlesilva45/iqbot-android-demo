@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
     private void stopAuto() {
         automatic = false;
         handler.removeCallbacks(autoTick);
-        if (autoButton != null) autoButton.setText("Iniciar 10 simulações automáticas");
+        if (autoButton != null) autoButton.setText("Analisar estratégia CALL/WAIT (offline)");
     }
     private void reset() {
         stopAuto(); balance = 100; operations = 0; wins = 0;
