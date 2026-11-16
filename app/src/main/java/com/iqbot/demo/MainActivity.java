@@ -11,8 +11,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -23,25 +21,14 @@ import java.util.Locale;
 import java.util.Random;
 
 public class MainActivity extends Activity {
-    private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
     private final ArrayList<Double> equity = new ArrayList<>();
     private double balance = 100.0;
     private int operations = 0, wins = 0;
-    private boolean automatic = false;
     private TextView summary, history;
     private Button autoButton;
     private EquityChart chart;
     private final StringBuilder log = new StringBuilder();
-    private final Runnable autoTick = new Runnable() {
-        @Override public void run() {
-            if (!automatic) return;
-            simulate();
-            if (operations >= 10 || balance < 2 || balance - 2 < 90) {
-                stopAuto();
-            } else handler.postDelayed(this, 1200);
-        }
-    };
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         equity.add(balance);
@@ -106,7 +93,7 @@ public class MainActivity extends Activity {
         root.addView(actions);
         Button single = actionButton("Simular operação aleatória", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(single, buttonParams());
-        single.setOnClickListener(v -> { if (!automatic) simulate(); });
+        single.setOnClickListener(v -> simulate());
         // Never advertise random results as an automated trading strategy.
         // Route the primary automated-study action to the actual offline CALL/WAIT engine.
         autoButton = actionButton("Analisar estratégia CALL/WAIT (offline)", Color.rgb(30, 41, 59), Color.WHITE);
@@ -181,7 +168,7 @@ public class MainActivity extends Activity {
         return params;
     }
     private void simulate() {
-        if (operations >= 10 || balance < 2 || balance - 2 < 90) { stopAuto(); return; }
+        if (operations >= 10 || balance < 2 || balance - 2 < 90) return;
         boolean win = random.nextBoolean();
         balance += win ? 1.60 : -2.00;
         operations++;
@@ -195,17 +182,9 @@ public class MainActivity extends Activity {
         history.setText(log.length() == 0 ? "Nenhuma operação ainda." : log.toString());
         chart.invalidate();
     }
-    private void stopAuto() {
-        automatic = false;
-        handler.removeCallbacks(autoTick);
-        if (autoButton != null) autoButton.setText("Analisar estratégia CALL/WAIT (offline)");
-    }
     private void reset() {
-        stopAuto(); balance = 100; operations = 0; wins = 0;
+        balance = 100; operations = 0; wins = 0;
         log.setLength(0); equity.clear(); equity.add(balance); refresh();
-    }
-    @Override protected void onDestroy() {
-        stopAuto(); super.onDestroy();
     }
     private class EquityChart extends View {
         final Paint p = new Paint(3);
