@@ -1,0 +1,45 @@
+name: Android replay smoke test
+on:
+  push:
+    branches: ['feature/iqbot-0-4-offline-replay']
+    paths: ['.github/workflows/android-replay-smoke.yml', 'scripts/emulator-replay-smoke.py']
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Android APK successful workflow run ID
+        default: '43882942347'
+        required: true
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: iqbot-lab-0.4-debug-apk
+          run-id: ${{ inputs.build_run || '43882942347' }}
+          github-token: ${{ github.token }}
+          path: verified-build
+      - name: Boot Android API 35 and test the published debug artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd verified-build && sha256sum -c apk-sha256.txt)
+          sudo chmod a+rw /dev/kvm
+          IMAGE='system-images;android-35;default;x86_64'
+          sdkmanager 'emulator' "$IMAGE"
+          echo no | avdmanager create avd --force --name IQBotSmoke --package "$IMAGE"
+          "$ANDROID_HOME/emulator/emulator" -avd IQBotSmoke -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          trap 'adb emu kill || true' EXIT
+          timeout 240 adb wait-for-device
+          timeout 120 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == "1" ]]; do sleep 2; done'
+          python3 scripts/emulator-replay-smoke.py verified-build/app/build/outputs/apk/debug/app-debug.apk
+      - name: Capture emulator diagnostics
+        if: failure()
+        run: |
+          tail -120 "$RUNNER_TEMP/emulator.log" || true
+          timeout 20 adb logcat -d -s AndroidRuntime ActivityManager | tail -160 || true
