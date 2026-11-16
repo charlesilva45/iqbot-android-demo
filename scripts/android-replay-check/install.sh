@@ -14,4 +14,4 @@ zip -qj "$temp/unsigned.apk" "$temp/dex/classes.dex"
 keytool -genkeypair -keystore "$temp/ci.p12" -storepass android -keypass android -alias ci -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=IQBot Emulator Test'
 "$build_tools/apksigner" sign --ks "$temp/ci.p12" --ks-pass pass:android --out "$temp/signed.apk" "$temp/unsigned.apk"
 adb install "$temp/signed.apk"
-adb shell 'cmd notification allow_listener com.iqbot.replaycheck/.StopActionTest$Listener'
+adb shell "cmd notification allow_listener 'com.iqbot.replaycheck/.StopActionTest\$Listener'"
