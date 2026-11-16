@@ -96,7 +96,7 @@ print(f"PASS replay advanced from candle {before} to {notification_progress()} w
 shell("input", "keyevent", "KEYCODE_WAKEUP")
 shell("wm", "dismiss-keyguard")
 wait_for(notification_progress, "Replay stopped before opening notification shade")
-stop = shell("am", "instrument", "-w", "com.iqbot.replaycheck/.StopActionTest")
+stop = shell("am", "instrument", "-w", "-r", "com.iqbot.replaycheck/.StopActionTest")
 print(stop, flush=True)
 assert "INSTRUMENTATION_CODE: -1" in stop, "The notification Stop action failed"
 wait_for(lambda: PACKAGE not in shell("cmd", "notification", "list"),
