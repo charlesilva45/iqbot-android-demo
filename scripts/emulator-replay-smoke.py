@@ -26,9 +26,13 @@ def center(node):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def bounds(label):
+def bounds(label, *, partial=False, package=None):
     for node in nodes():
-        if label.casefold() in node.get("text", "").casefold():
+        if package is not None and node.get("package") != package:
+            continue
+        text = node.get("text", "").casefold()
+        matches = label.casefold() in text if partial else label.casefold() == text
+        if matches:
             return center(node)
     raise AssertionError(f"Missing UI control: {label}")
 
@@ -37,8 +41,8 @@ def tap_at(x, y):
     shell("input", "tap", str(x), str(y))
 
 
-def tap(label):
-    tap_at(*bounds(label))
+def tap(label, *, package=None):
+    tap_at(*bounds(label, package=package))
 
 
 def extend_replay_for_notification_test():
@@ -91,12 +95,12 @@ shell("wm", "dismiss-keyguard")
 wait_for(notification_progress, "Replay stopped before opening notification shade")
 shell("cmd", "statusbar", "expand-notifications")
 try:
-    tap("Parar")
+    tap("Parar", package="com.android.systemui")
 except AssertionError:
     try:
-        x, y = bounds("IQBot · reprodução offline")
+        x, y = bounds("IQBot · reprodução offline", partial=True, package="com.android.systemui")
         shell("input", "swipe", str(x), str(y), str(x), str(y + 200), "400")
-        tap("Parar")
+        tap("Parar", package="com.android.systemui")
     except AssertionError:
         print([(node.get("text"), node.get("content-desc")) for node in nodes()
                if node.get("text") or node.get("content-desc")], flush=True)
