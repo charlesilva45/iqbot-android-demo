@@ -17,8 +17,12 @@ def shell(*args):
 
 
 def nodes():
-    shell("uiautomator", "dump", "/sdcard/iqbot-window.xml")
-    return ET.fromstring(shell("cat", "/sdcard/iqbot-window.xml")).iter("node")
+    window = "/sdcard/iqbot-window.xml"
+    shell("rm", "-f", window)
+    result = shell("uiautomator", "dump", "--compressed", window)
+    if "dumped to" not in result:
+        raise AssertionError(f"Unable to inspect Android UI: {result.strip()}")
+    return ET.fromstring(shell("cat", window)).iter("node")
 
 
 def center(node):
@@ -46,13 +50,17 @@ def tap(label, *, package=None):
 
 
 def extend_replay_for_notification_test():
-    fields = [node for node in nodes() if node.get("class") == "android.widget.EditText"]
-    stake = fields[0]
-    tap_at(*center(stake))
-    shell("input", "keyevent", "KEYCODE_MOVE_END", "KEYCODE_DEL")
-    shell("input", "text", "0.01")
-    shell("input", "keyevent", "KEYCODE_BACK")
-    assert any(node.get("text") == "0.01" for node in nodes()), "Stake was not set"
+    def set_field(index, value):
+        fields = [node for node in nodes() if node.get("class") == "android.widget.EditText"]
+        field = fields[index]
+        tap_at(*center(field))
+        shell("input", "keyevent", "KEYCODE_MOVE_END", *(["KEYCODE_DEL"] * len(field.get("text", ""))))
+        shell("input", "text", value)
+        shell("input", "keyevent", "KEYCODE_BACK")
+        assert any(node.get("text") == value for node in nodes()), f"Field {index} was not set"
+
+    set_field(0, "0.01")
+    set_field(3, "500")
 
 
 def wait_for(check, description, seconds=15):
@@ -75,6 +83,8 @@ adb("install", "-g", sys.argv[1])
 shell("wm", "size", "720x1280")
 shell("wm", "density", "180")
 shell("settings", "put", "system", "screen_off_timeout", "120000")
+for setting in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
+    shell("settings", "put", "global", setting, "0")
 shell("locksettings", "set-disabled", "true")
 shell("input", "keyevent", "KEYCODE_WAKEUP")
 shell("wm", "dismiss-keyguard")
@@ -94,17 +104,13 @@ shell("input", "keyevent", "KEYCODE_WAKEUP")
 shell("wm", "dismiss-keyguard")
 wait_for(notification_progress, "Replay stopped before opening notification shade")
 shell("cmd", "statusbar", "expand-notifications")
+shell("input", "swipe", "360", "4", "360", "700", "350")
 try:
     tap("Parar", package="com.android.systemui")
 except AssertionError:
-    try:
-        x, y = bounds("IQBot · reprodução offline", partial=True, package="com.android.systemui")
-        shell("input", "swipe", str(x), str(y), str(x), str(y + 200), "400")
-        tap("Parar", package="com.android.systemui")
-    except AssertionError:
-        print([(node.get("text"), node.get("content-desc")) for node in nodes()
-               if node.get("text") or node.get("content-desc")], flush=True)
-        raise
+    x, y = bounds("IQBot · reprodução offline", partial=True, package="com.android.systemui")
+    shell("input", "swipe", str(x), str(y), str(x), str(y + 200), "400")
+    tap("Parar", package="com.android.systemui")
 wait_for(lambda: PACKAGE not in shell("cmd", "notification", "list"),
          "Notification still present after selecting Parar")
 wait_for(lambda: "ServiceRecord{" not in shell("dumpsys", "activity", "services", PACKAGE),
