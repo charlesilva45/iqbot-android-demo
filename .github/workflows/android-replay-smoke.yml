@@ -1,13 +1,14 @@
 name: Android replay smoke test
 on:
-  push:
-    branches: ['feature/iqbot-0-4-offline-replay']
-    paths: ['.github/workflows/android-replay-smoke.yml', 'scripts/emulator-replay-smoke.py', 'scripts/android-replay-check/**']
+  workflow_call:
+    inputs:
+      build_run:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       build_run:
-        description: Android APK successful workflow run ID
-        default: '43882942347'
+        description: Android APK workflow run ID
         required: true
 jobs:
   replay:
@@ -25,7 +26,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: iqbot-lab-0.4-debug-apk
-          run-id: ${{ inputs.build_run || '43882942347' }}
+          run-id: ${{ inputs.build_run }}
           github-token: ${{ github.token }}
           path: verified-build
       - name: Boot Android API 35 and test the published debug artifact
@@ -38,7 +39,13 @@ jobs:
           export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           command_tools="$ANDROID_HOME/cmdline-tools/latest/bin"
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
-          "$command_tools/sdkmanager" 'emulator' 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' "$IMAGE"
+          for attempt in 1 2 3; do
+            if "$command_tools/sdkmanager" 'emulator' 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' "$IMAGE"; then
+              break
+            fi
+            if (( attempt == 3 )); then exit 1; fi
+            sleep 5
+          done
           export ANDROID_USER_HOME="$RUNNER_TEMP/android-user"
           export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
           unset ANDROID_SDK_HOME

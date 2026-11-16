@@ -66,6 +66,9 @@ final class ReplaySession {
     StrategyEngine.Signal signal() { return signal; }
     int tradeCount() { return trades.size(); }
     double balance() { return balance; }
+    int wins() { return wins; }
+    int losses() { return losses; }
+    int ties() { return ties; }
 
     StrategyEngine.Report report() {
         return new StrategyEngine.Report(new ArrayList<>(trades), balance, maxDrawdown, wins, losses, ties);

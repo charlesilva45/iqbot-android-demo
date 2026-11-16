@@ -63,7 +63,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='5' versionName='0\\.4\\.1'" apk-badging.txt
+          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='6' versionName='0\\.4\\.2'" apk-badging.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
           if grep -Fq 'android.permission.INTERNET' apk-permissions.txt; then
             echo "Unexpected network permission in offline APK"
@@ -82,3 +82,11 @@ jobs:
             apk-permissions.txt
             apk-signature.txt
             strategy-test-results.txt
+  replay:
+    needs: build
+    uses: ./.github/workflows/android-replay-smoke.yml
+    with:
+      build_run: ${{ format('{0}', github.run_id) }}
+    permissions:
+      actions: read
+      contents: read

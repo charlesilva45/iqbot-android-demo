@@ -239,7 +239,7 @@ public final class BacktestActivity extends Activity {
 
     private void showReplayStatus() {
         boolean running = ReplayService.running();
-        replayStatus.setText(ReplayService.status());
+        replayStatus.setText(ReplayService.status(this));
         startReplay.setEnabled(!busy && !running);
         stopReplay.setEnabled(running);
     }

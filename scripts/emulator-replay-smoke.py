@@ -106,3 +106,33 @@ wait_for(lambda: "ServiceRecord{" not in shell("dumpsys", "activity", "services"
 wait_for(lambda: any("Reprodução interrompida" in node.get("text", "") for node in nodes()),
          "App did not report user interruption")
 print("PASS notification action stopped replay and removed service.")
+
+
+def reopen_backtest():
+    shell("am", "force-stop", PACKAGE)
+    shell("am", "start", "-W", "-n", PACKAGE + "/com.iqbot.demo.MainActivity")
+    tap("Executar estratégia CALL/WAIT (offline)")
+
+
+def has_saved_summary(message):
+    return any(message in text and "Saldo virtual" in text and "operações liquidadas" in text
+               for text in (node.get("text", "") for node in nodes()))
+
+
+reopen_backtest()
+wait_for(lambda: has_saved_summary("Reprodução interrompida"),
+         "The stopped session summary disappeared after restarting the app")
+print("PASS the stopped session summary survives app restart.")
+
+extend_replay_for_notification_test()
+tap("Reproduzir em segundo plano")
+wait_for(lambda: notification_progress() >= 46, "Replay did not advance before process stop")
+wait_for(lambda: "operações liquidadas" in shell(
+    "run-as", PACKAGE, "cat", "shared_prefs/offline_replay.xml"),
+    "No replay checkpoint was written to the app storage")
+reopen_backtest()
+wait_for(lambda: has_saved_summary("Último progresso salvo"),
+         "The interrupted process did not show its saved checkpoint")
+wait_for(lambda: "ServiceRecord{" not in shell("dumpsys", "activity", "services", PACKAGE),
+         "Replay restarted after a process stop")
+print("PASS process stop preserves the checkpoint without restarting replay.")
