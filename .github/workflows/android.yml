@@ -48,6 +48,11 @@ jobs:
           grep -Fq 'Intent.ACTION_VIEW' "$UI"
           grep -Fq 'StrategySelector.recommend(input, input.size() - 1)' app/src/main/java/com/iqbot/demo/BacktestActivity.java
           grep -Fq 'Recomendação CALL/WAIT:' app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          # The dashboard preview must use the same closed-candle selector as backtest.
+          grep -Fq 'StrategySelector.recommend(previewCandles, previewCandles.size() - 1)' "$UI"
+          grep -Fq 'OfflineBacktest.sample()' "$UI"
+          grep -Fq 'série SINTÉTICA' "$UI"
+          grep -Fq 'preview.selected.signal == StrategyEngine.Signal.CALL' "$UI"
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
       - name: Verify APK identity and version
