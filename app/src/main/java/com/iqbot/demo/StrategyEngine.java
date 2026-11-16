@@ -2,6 +2,8 @@ package com.iqbot.demo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.function.IntConsumer;
 
 /** Experimental research engine. Never submits broker orders. */
 public final class StrategyEngine {
@@ -32,7 +34,7 @@ public final class StrategyEngine {
             trades=t; finalBalance=b; maxDrawdown=dd; wins=w; losses=l; this.ties=ties;
         }
     }
-    private static double ema(List<Candle> c, int end, int period) {
+    static double ema(List<Candle> c, int end, int period) {
         if (end+1 < period) return Double.NaN;
         double value=0;
         for (int i=0;i<period;i++) value+=c.get(i).close;
@@ -41,7 +43,7 @@ public final class StrategyEngine {
         for (int i=period;i<=end;i++) value+=k*(c.get(i).close-value);
         return value;
     }
-    private static double rsi(List<Candle> c, int end, int period) {
+    static double rsi(List<Candle> c, int end, int period) {
         if (end < period) return Double.NaN;
         double gain=0, loss=0;
         for (int i=1;i<=period;i++) {
@@ -58,7 +60,7 @@ public final class StrategyEngine {
         if (loss==0) return 100;
         return 100-100/(1+gain/loss);
     }
-    private static double atr(List<Candle> c, int end, int period) {
+    static double atr(List<Candle> c, int end, int period) {
         if (end < period) return Double.NaN;
         double v=0;
         for (int i=1;i<=period;i++) v+=tr(c,i);
@@ -71,6 +73,18 @@ public final class StrategyEngine {
         double prev=c.get(i-1).close;
         return Math.max(x.high-x.low,Math.max(Math.abs(x.high-prev),Math.abs(x.low-prev)));
     }
+    /** Compare each candle with the ATR available before that candle. */
+    static boolean inShockCooldown(List<Candle> candles, int end) {
+        for (int index = Math.max(15, end - 3); index <= end; index++) {
+            double priorAtr = atr(candles, index - 1, 14);
+            double move = Math.abs(candles.get(index).close - candles.get(index - 1).close);
+            if (priorAtr > 0 && (tr(candles, index) > 3 * priorAtr || move > 2.5 * priorAtr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static final class Indicators {
         public final double ema9, ema21, rsi14, atr14;
 
@@ -108,7 +122,9 @@ public final class StrategyEngine {
         Candle last=m5.get(end), prev=m5.get(end-1);
         if (volatility <= 0 || volatility/last.close < 0.0001) return Signal.WAIT;
         if (fast>slow && trendFast>trendSlow && strength>=52 && strength<=68
-                && last.close>last.open && last.close>prev.high) return Signal.CALL;
+                && last.close>last.open && last.close>prev.high && !inShockCooldown(m5, end)) {
+            return Signal.CALL;
+        }
         // CALL-only research policy: bearish conditions must abstain, never emit PUT.
         return Signal.WAIT;
     }
@@ -118,19 +134,24 @@ public final class StrategyEngine {
      */
     public static Report backtest(List<Candle> m5, double initialBalance, double stake, double payout,
                                   double stopBalance, int maxTrades) {
-        return backtest(m5, initialBalance, stake, payout, stopBalance, maxTrades, false);
+        return backtest(m5, initialBalance, stake, payout, stopBalance, maxTrades, false, index -> {});
     }
 
     /** Skips entries when a full loss would take the balance below the floor. */
     public static Report backtestWithRiskFloor(List<Candle> m5, double initialBalance, double stake,
                                                 double payout, double floor, int maxTrades) {
+        return backtestWithRiskFloor(m5, initialBalance, stake, payout, floor, maxTrades, index -> {});
+    }
+
+    static Report backtestWithRiskFloor(List<Candle> m5, double initialBalance, double stake,
+                                        double payout, double floor, int maxTrades, IntConsumer onClosedBar) {
         if (!Double.isFinite(floor) || floor < 0 || floor >= initialBalance || stake > initialBalance)
             throw new IllegalArgumentException("Invalid risk floor or stake");
-        return backtest(m5, initialBalance, stake, payout, floor, maxTrades, true);
+        return backtest(m5, initialBalance, stake, payout, floor, maxTrades, true, onClosedBar);
     }
 
     private static Report backtest(List<Candle> m5, double initialBalance, double stake, double payout,
-                                   double stopBalance, int maxTrades, boolean enforceFloor) {
+                                   double stopBalance, int maxTrades, boolean enforceFloor, IntConsumer onClosedBar) {
         if (!Double.isFinite(initialBalance) || !Double.isFinite(stake) || !Double.isFinite(payout) || !Double.isFinite(stopBalance) || initialBalance<=0 || stake<=0 || payout<0 || payout>1 || maxTrades<1)
             throw new IllegalArgumentException("Invalid simulation parameters");
         if (m5 == null) throw new IllegalArgumentException("Missing candles");
@@ -149,6 +170,8 @@ public final class StrategyEngine {
         double balance=initialBalance, peak=balance, maxDD=0;
         int wins=0, losses=0, ties=0;
         for (int i=65;i<m5.size()-1 && trades.size()<maxTrades;i++) {
+            if (Thread.currentThread().isInterrupted()) throw new CancellationException();
+            onClosedBar.accept(i);
             if (enforceFloor) {
                 double remaining = balance - stake;
                 if (remaining < stopBalance - 4 * Math.ulp(balance)) break;

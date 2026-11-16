@@ -10,7 +10,6 @@ import android.graphics.Color;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -32,6 +31,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         equity.add(balance);
         ScrollView scroll = new ScrollView(this);
+        scroll.setFitsSystemWindows(true);
         scroll.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);

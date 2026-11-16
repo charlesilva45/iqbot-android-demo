@@ -1,7 +1,7 @@
 name: Android APK
 on:
   push:
-    branches: [main, 'feature/iqbot-0-4-offline-backtest']
+    branches: [main, 'feature/iqbot-0-4-offline-backtest', 'work/iqbot-demo-0.4.1']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -46,9 +46,9 @@ jobs:
           grep -Fq 'DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)' "$UI"
           grep -Fq 'Abrir o site não conecta sua conta ao IQBot.' "$UI"
           grep -Fq 'Intent.ACTION_VIEW' "$UI"
-          grep -Fq 'StrategySelector.recommend(input, input.size() - 1)' app/src/main/java/com/iqbot/demo/BacktestActivity.java
-          grep -Fq 'Recomendação CALL/WAIT:' app/src/main/java/com/iqbot/demo/BacktestActivity.java
-          # The dashboard preview must use the same closed-candle selector as backtest.
+          grep -Fq 'startForegroundService(service)' app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          grep -Fq 'StrategyEngine.backtestWithRiskFloor(input' app/src/main/java/com/iqbot/demo/ReplayService.java
+          grep -Fq 'setAction(STOP)' app/src/main/java/com/iqbot/demo/ReplayService.java
           grep -Fq 'StrategySelector.recommend(previewCandles, previewCandles.size() - 1)' "$UI"
           grep -Fq 'OfflineBacktest.sample()' "$UI"
           grep -Fq 'série SINTÉTICA' "$UI"
@@ -63,14 +63,22 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='4' versionName='0\\.4\\.0'" apk-badging.txt
+          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='5' versionName='0\\.4\\.1'" apk-badging.txt
+          "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          if grep -Fq 'android.permission.INTERNET' apk-permissions.txt; then
+            echo 'Offline APK must not declare INTERNET'
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee apk-signature.txt
           sha256sum "$APK" | tee apk-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: iqbot-lab-0.4-debug-apk
+          name: iqbot-lab-0.4.1-debug-apk
           if-no-files-found: error
           path: |
             app/build/outputs/apk/debug/*.apk
             apk-badging.txt
             apk-sha256.txt
+            apk-signature.txt
+            apk-permissions.txt
             strategy-test-results.txt

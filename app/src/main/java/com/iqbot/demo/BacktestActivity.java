@@ -1,6 +1,10 @@
 package com.iqbot.demo;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -12,24 +16,21 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 public final class BacktestActivity extends Activity {
     private static final int PICK_CSV = 1;
-    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
-    private List<StrategyEngine.Candle> candles = OfflineBacktest.sample();
+    private static final int REQUEST_NOTIFICATIONS = 2;
+    private Uri selectedCsv;
+    private SharedPreferences replayState;
+    private final SharedPreferences.OnSharedPreferenceChangeListener replayListener =
+            (state, key) -> showReplayState();
     private TextView source, status, result;
     private EditText stake, maxLoss, payout, maxTrades;
-    private Button importCsv, sample, run;
+    private Button importCsv, sample, run, replay, stop;
 
     @Override public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
+        replayState = getSharedPreferences(ReplayService.STATE, MODE_PRIVATE);
+        if (savedState != null) selectedCsv = savedState.getParcelable("csv");
         ScrollView scroll = new ScrollView(this);
         scroll.setFitsSystemWindows(true);
         scroll.setFillViewport(true);
@@ -43,7 +44,7 @@ public final class BacktestActivity extends Activity {
         Button back = button(content, "Voltar ao painel");
         back.setOnClickListener(v -> finish());
         label(content, "Backtest offline", 28);
-        label(content, "SIMULAÇÃO OFFLINE · SEM ORDENS REAIS. Apenas sinais CALL em tendência de alta; sem PUT. Saldo inicial fictício de R$ 100. Entrada na abertura do candle M5 seguinte ao sinal e liquidação no fechamento. Empates contam como perdas. Resultados históricos não garantem ganhos.", 15);
+        label(content, "Simulação local com saldo fictício de R$ 100. O motor avalia candles M5/M15 fechados e só simula CALL. Entrada na abertura do próximo M5, liquidação no fechamento e empate contado como perda.", 15);
         source = label(content, "", 16);
         importCsv = button(content, "Selecionar CSV local");
         importCsv.setOnClickListener(v -> {
@@ -59,50 +60,69 @@ public final class BacktestActivity extends Activity {
         });
         sample = button(content, "Usar série sintética");
         sample.setOnClickListener(v -> {
-            candles = OfflineBacktest.sample();
-            showSource("Série sintética");
+            selectedCsv = null;
+            showSource();
         });
         stake = field(content, "Valor fixo por operação (R$)", "2", true);
         maxLoss = field(content, "Limite de perda sobre o saldo inicial (R$)", "10", true);
         payout = field(content, "Retorno líquido em caso de acerto (%)", "80", true);
         maxTrades = field(content, "Máximo de operações", "10", false);
         run = button(content, "Executar backtest");
-        run.setOnClickListener(v -> runBacktest());
+        run.setOnClickListener(v -> runBacktest(false));
+        replay = button(content, "Reproduzir em segundo plano");
+        replay.setOnClickListener(v -> {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
+            } else {
+                runBacktest(true);
+            }
+        });
+        stop = button(content, "Parar simulação");
+        stop.setOnClickListener(v -> startService(new Intent(this, ReplayService.class).setAction(ReplayService.STOP)));
         status = label(content, "", 15);
         status.setAccessibilityLiveRegion(TextView.ACCESSIBILITY_LIVE_REGION_POLITE);
         result = label(content, "", 16);
-        showSource("Série sintética");
+        showSource();
+        showReplayState();
     }
 
-    private void showSource(String name) {
-        source.setText(String.format(PT_BR, "%s · %d candles M5", name, candles.size()));
-        result.setText("");
-        status.setText("");
+    @Override protected void onStart() {
+        super.onStart();
+        replayState.registerOnSharedPreferenceChangeListener(replayListener);
+        showReplayState();
+    }
+
+    @Override protected void onStop() {
+        replayState.unregisterOnSharedPreferenceChangeListener(replayListener);
+        super.onStop();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        state.putParcelable("csv", selectedCsv);
+        super.onSaveInstanceState(state);
+    }
+
+    private void showSource() {
+        source.setText(selectedCsv == null ? "Próxima execução: série sintética" : "Próxima execução: CSV selecionado");
     }
 
     @Override protected void onActivityResult(int request, int code, Intent data) {
         super.onActivityResult(request, code, data);
         if (request != PICK_CSV || code != RESULT_OK || data == null || data.getData() == null) return;
-        Uri uri = data.getData();
-        busy(true, "Lendo CSV…");
-        worker.execute(() -> {
-            try (InputStream input = getContentResolver().openInputStream(uri)) {
-                if (input == null) throw new IOException("Arquivo indisponível.");
-                List<StrategyEngine.Candle> imported = OfflineBacktest.readCsv(input);
-                runOnUiThread(() -> {
-                    if (isDestroyed() || isFinishing()) return;
-                    candles = imported;
-                    busy(false, "");
-                    showSource("CSV importado");
-                });
-            } catch (IOException | SecurityException e) {
-                finishWork("CSV rejeitado. Confira o formato, os candles M5 consecutivos e o limite de 2 MiB / 10.000 candles. " + e.getMessage(), "");
-            }
-        });
+        selectedCsv = data.getData();
+        showSource();
     }
 
-    private void runBacktest() {
-        result.setText("");
+    @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(request, permissions, results);
+        if (request != REQUEST_NOTIFICATIONS) return;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) runBacktest(true);
+        else status.setText("Ative as notificações para acompanhar e parar a reprodução pela tela bloqueada.");
+    }
+
+    private void runBacktest(boolean paced) {
+        if (ReplayService.running) return;
         final double amount, loss, rate;
         final int limit;
         try {
@@ -119,51 +139,34 @@ public final class BacktestActivity extends Activity {
             return;
         }
 
-        List<StrategyEngine.Candle> input = candles;
-        busy(true, "Executando backtest…");
-        worker.execute(() -> {
-            try {
-                StrategyEngine.Report report = StrategyEngine.backtestWithRiskFloor(
-                        input, 100, amount, rate / 100, 100 - loss, limit);
-                StrategyEngine.Indicators indicators = StrategyEngine.indicators(input);
-                // Diagnostic signal from the final CLOSED M5 bar; never sends an order.
-                StrategySelector.Recommendation recommendation =
-                        StrategySelector.recommend(input, input.size() - 1);
-                String signal = recommendation.selected.signal == StrategyEngine.Signal.CALL
-                        ? "CALL (apenas estudo; nenhuma ordem)"
-                        : "WAIT (sem entrada)";
-
-                int total = report.trades.size();
-                String accuracy = total == 0 ? "—" : String.format(PT_BR, "%.1f%%", 100.0 * report.wins / total);
-                String output = String.format(PT_BR,
-                        "Saldo final: R$ %.2f\nResultado: R$ %+.2f\nQueda máxima desde o pico: R$ %.2f\n"
-                                + "Operações: %d · Acertos: %d · Perdas: %d\nEmpates incluídos nas perdas: %d\nTaxa de acerto: %s\n\n"
-                                + "Recomendação CALL/WAIT: %s\nÚltimo candle M5 fechado\nEMA 9: %.6g · EMA 21: %.6g\nRSI 14: %.2f · ATR 14: %.6g",
-                        report.finalBalance, report.finalBalance - 100, report.maxDrawdown,
-                        total, report.wins, report.losses, report.ties, accuracy, signal,
-                        indicators.ema9, indicators.ema21, indicators.rsi14, indicators.atr14);
-                String message = amount > loss ? "Valor por operação excede a perda disponível. Nenhuma entrada autorizada."
-                        : total == 0 ? "Nenhuma entrada simulada nas condições selecionadas." : "Backtest concluído.";
-                finishWork(message, output);
-            } catch (IllegalArgumentException e) {
-                finishWork("Não foi possível executar o backtest com esses dados.", "");
-            }
-        });
+        Intent service = new Intent(this, ReplayService.class)
+                .putExtra(ReplayService.STAKE, amount)
+                .putExtra(ReplayService.LOSS, loss)
+                .putExtra(ReplayService.PAYOUT, rate / 100)
+                .putExtra(ReplayService.LIMIT, limit)
+                .putExtra(ReplayService.PACED, paced);
+        if (selectedCsv != null) {
+            service.setData(selectedCsv);
+            service.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        }
+        try {
+            startForegroundService(service);
+        } catch (IllegalStateException | SecurityException e) {
+            status.setText("O Android não permitiu iniciar a simulação. Tente com o app aberto.");
+        }
     }
 
-    private void finishWork(String message, String output) {
-        runOnUiThread(() -> {
-            if (isDestroyed() || isFinishing()) return;
-            busy(false, message);
-            result.setText(output);
-        });
-    }
-
-    private void busy(boolean busy, String message) {
-        importCsv.setEnabled(!busy);
-        sample.setEnabled(!busy);
-        run.setEnabled(!busy);
-        status.setText(message);
+    private void showReplayState() {
+        boolean running = ReplayService.running;
+        boolean interrupted = !running && replayState.getBoolean(ReplayService.PENDING, false);
+        status.setText(interrupted ? "Simulação interrompida pelo Android."
+                : replayState.getString(ReplayService.STATUS, ""));
+        result.setText(replayState.getString(ReplayService.RESULT, ""));
+        run.setEnabled(!running);
+        replay.setEnabled(!running);
+        stop.setEnabled(running);
+        importCsv.setEnabled(!running);
+        sample.setEnabled(!running);
     }
 
     private double decimal(EditText field) {
@@ -204,8 +207,4 @@ public final class BacktestActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    @Override protected void onDestroy() {
-        worker.shutdownNow();
-        super.onDestroy();
-    }
 }
