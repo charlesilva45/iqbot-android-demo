@@ -107,20 +107,11 @@ public class MainActivity extends Activity {
         Button single = actionButton("Simular operação aleatória", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(single, buttonParams());
         single.setOnClickListener(v -> { if (!automatic) simulate(); });
-        autoButton = actionButton("Iniciar 10 simulações automáticas", Color.rgb(30, 41, 59), Color.WHITE);
+        // Never advertise random results as an automated trading strategy.
+        // Route the primary automated-study action to the actual offline CALL/WAIT engine.
+        autoButton = actionButton("Analisar estratégia CALL/WAIT (offline)", Color.rgb(30, 41, 59), Color.WHITE);
         root.addView(autoButton, buttonParams());
-        autoButton.setOnClickListener(v -> {
-            if (automatic) stopAuto();
-            else {
-                if (operations >= 10 || balance - 2 < 90) {
-                    Toast.makeText(this, "Limite atingido. Use Reiniciar dados fictícios para começar uma nova sessão.", Toast.LENGTH_LONG).show();
-                    return;
-                }
-                automatic = true;
-                autoButton.setText("Parar simulação");
-                handler.post(autoTick);
-            }
-        });
+        autoButton.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
         Button reset = actionButton("Reiniciar dados fictícios", Color.rgb(30, 41, 59), Color.rgb(203, 213, 225));
         root.addView(reset, buttonParams());
         reset.setOnClickListener(v -> new AlertDialog.Builder(this)
