@@ -138,7 +138,7 @@ public final class BacktestActivity extends Activity {
                 String output = String.format(PT_BR,
                         "Saldo final: R$ %.2f\nResultado: R$ %+.2f\nQueda máxima desde o pico: R$ %.2f\n"
                                 + "Operações: %d · Acertos: %d · Perdas: %d\nEmpates incluídos nas perdas: %d\nTaxa de acerto: %s\n\n"
-                                + "Último candle M5 fechado\nEMA 9: %.6g · EMA 21: %.6g\nRSI 14: %.2f · ATR 14: %.6g",
+                                + "Recomendação CALL/WAIT: %s\nÚltimo candle M5 fechado\nEMA 9: %.6g · EMA 21: %.6g\nRSI 14: %.2f · ATR 14: %.6g",
                         report.finalBalance, report.finalBalance - 100, report.maxDrawdown,
                         total, report.wins, report.losses, report.ties, accuracy, signal,
                         indicators.ema9, indicators.ema21, indicators.rsi14, indicators.atr14);
