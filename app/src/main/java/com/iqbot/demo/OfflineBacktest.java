@@ -34,6 +34,12 @@ final class OfflineBacktest {
         return candles;
     }
 
+    static void requireClosed(List<StrategyEngine.Candle> candles, long now) throws IOException {
+        if (candles.get(candles.size() - 1).time > now - 300_000L) {
+            throw new IOException("O último candle M5 precisa estar fechado.");
+        }
+    }
+
     static List<StrategyEngine.Candle> sample() {
         List<StrategyEngine.Candle> candles = new ArrayList<>();
         double open = 100;

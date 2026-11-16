@@ -1,7 +1,7 @@
 name: Android APK
 on:
   push:
-    branches: [main, 'feature/iqbot-0-4-offline-backtest']
+    branches: [main, 'feature/iqbot-0-4-offline-backtest', 'feature/iqbot-0-4-offline-replay']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/iqbot-classes
-          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java app/src/test/java/com/iqbot/demo/*Test.java
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest,ReplaySession}.java app/src/test/java/com/iqbot/demo/*Test.java
           : > strategy-test-results.txt
           for test in app/src/test/java/com/iqbot/demo/*Test.java; do
             name="$(basename "$test" .java)"
@@ -63,7 +63,13 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='4' versionName='0\\.4\\.0'" apk-badging.txt
+          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='5' versionName='0\\.4\\.1'" apk-badging.txt
+          "$AAPT" dump permissions "$APK" > apk-permissions.txt
+          if grep -Fq 'android.permission.INTERNET' apk-permissions.txt; then
+            echo "Unexpected network permission in offline APK"
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee apk-signature.txt
           sha256sum "$APK" | tee apk-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -73,4 +79,6 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             apk-badging.txt
             apk-sha256.txt
+            apk-permissions.txt
+            apk-signature.txt
             strategy-test-results.txt

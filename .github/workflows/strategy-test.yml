@@ -1,7 +1,7 @@
 name: Strategy engine smoke test
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/iqbot-0-4-offline-replay']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
       - name: Compile pure Java strategy and smoke test
         run: |
           mkdir -p /tmp/iqbot-classes
-          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java app/src/test/java/com/iqbot/demo/*Test.java
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest,ReplaySession}.java app/src/test/java/com/iqbot/demo/*Test.java
           for test in app/src/test/java/com/iqbot/demo/*Test.java; do
             name=$(basename "$test" .java)
             java -cp /tmp/iqbot-classes "com.iqbot.demo.$name"

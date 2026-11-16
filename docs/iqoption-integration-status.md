@@ -1,0 +1,5 @@
+# Verificação de integração com a IQ Option — 16/11/2026
+
+Os [termos oficiais da conta demo](https://iqoption.com/pt/terms-and-conditions/practice-account-terms), seção 2, descrevem transações de demonstração e ferramentas oferecidas na plataforma. Os [termos gerais](https://iqoption.com/pt/terms-and-conditions/terms-conditions?company_id=2&country_id=30&locale=pt&platform=2) descrevem a plataforma de negociação, inclusive cotações e processamento de ordens. Essas fontes não documentam um fluxo de autenticação para aplicativos terceiros, uma API pública de cotações ou um ambiente de automação de ordens exclusivamente demo. O [cliente comunitário](https://github.com/iqoptionapi/iqoptionapi/blob/master/README.md) se apresenta como não oficial.
+
+**Status** — Acesso automatizado de terceiros sem autorização confirmada. Para integrar futuramente, obter documentação ou confirmação escrita da IQ Option que abranja a região do usuário, autenticação, dados e escopo de execução exclusivamente demo. O APK atual roda localmente, sem pedir credenciais e sem permissão de internet. O atalho do painel abre o site num aplicativo externo.

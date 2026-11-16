@@ -51,12 +51,11 @@ public class MainActivity extends Activity {
         root.addView(badge);
         Button backtest = actionButton("Executar estratégia CALL/WAIT (offline)", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(backtest, buttonParams());
-        TextView strategyNote = label("Este é o motor de sinais CALL/WAIT com candles M5/M15 fechados. Importe CSV para avaliar dados históricos; nenhuma ordem é enviada.", 12, Color.rgb(148, 163, 184));
+        TextView strategyNote = label("Este é o motor de sinais CALL/WAIT com candles M5 fechados. Importe CSV para avaliar dados históricos; nenhuma ordem é enviada.", 12, Color.rgb(148, 163, 184));
         strategyNote.setPadding(0, dp(8), 0, dp(4));
         root.addView(strategyNote);
         backtest.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
-        // This panel uses the same selector as the offline backtest, not the random demo.
-        // The bundled candles are synthetic and must never be presented as live quotes.
+        // The dashboard previews the same selector used by the backtest and replay.
         java.util.List<StrategyEngine.Candle> previewCandles = OfflineBacktest.sample();
         StrategySelector.Recommendation preview =
                 StrategySelector.recommend(previewCandles, previewCandles.size() - 1);
