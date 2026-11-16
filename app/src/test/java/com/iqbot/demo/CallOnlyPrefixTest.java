@@ -27,6 +27,11 @@ public final class CallOnlyPrefixTest {
                 StrategySelector.Recommendation original = StrategySelector.recommend(bars, end);
                 check(original.selected.signal != StrategyEngine.Signal.PUT,
                         "PUT selected in scenario " + scenario + " at " + end);
+                if (original.selected.signal == StrategyEngine.Signal.CALL) {
+                    StrategySelector.Trend observed = StrategySelector.trend(bars, end);
+                    check(observed.direction == StrategyEngine.Signal.CALL && observed.strength > 0 && !observed.shock,
+                            "CALL without confirmed unshocked uptrend in scenario " + scenario + " at " + end);
+                }
                 List<StrategyEngine.Candle> prefix = new ArrayList<>(bars.subList(0, end + 1));
                 StrategySelector.Recommendation truncated = StrategySelector.recommend(prefix, end);
                 check(original.selected.signal == truncated.selected.signal,
