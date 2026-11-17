@@ -19,7 +19,13 @@ final class OfflineBacktest {
         ByteArrayOutputStream data = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
         int count;
+        int emptyReads = 0;
         while ((count = input.read(buffer)) != -1) {
+            if (count == 0) {
+                if (++emptyReads >= 3) throw new IOException("CSV stream made no progress.");
+                continue;
+            }
+            emptyReads = 0;
             if (data.size() + count > MAX_BYTES) {
                 throw new IOException("O CSV deve ter até 2 MiB.");
             }
