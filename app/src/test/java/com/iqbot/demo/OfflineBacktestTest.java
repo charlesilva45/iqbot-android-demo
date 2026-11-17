@@ -76,6 +76,21 @@ public final class OfflineBacktestTest {
             }
         });
         require(recovered.size() == sample.size(), "Recover after two zero-byte reads");
+        // Progress resets the stall counter: intermittent zero-byte reads are permitted.
+        final ByteArrayInputStream intermittentSource = asStream(csv.toString());
+        List<StrategyEngine.Candle> intermittent = OfflineBacktest.readCsv(new java.io.InputStream() {
+            boolean returnZero = true;
+            @Override public int read() throws IOException { return intermittentSource.read(); }
+            @Override public int read(byte[] bytes, int off, int len) throws IOException {
+                if (returnZero) {
+                    returnZero = false;
+                    return 0;
+                }
+                returnZero = true;
+                return intermittentSource.read(bytes, off, len);
+            }
+        });
+        require(intermittent.size() == sample.size(), "Intermittent zero reads must reset stall counter");
         // Invalid historical data must fail before it can reach the simulation.
         String header = "timestamp,open,high,low,close\n";
         assertCsvRejected(header + "0,100,101,99,100\n0,100,101,99,100\n", "duplicate timestamp");
