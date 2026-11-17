@@ -46,6 +46,22 @@ public final class CandleContinuitySafetyTest {
         missing.set(25, null);
         rejects(missing, "null candle");
 
+        // The backtest must independently reject gaps, even if the UI selector is bypassed.
+        boolean backtestRejected = false;
+        try {
+            StrategyEngine.backtest(gap, 100.0, 2.0, 0.8, 80.0, 10);
+        } catch (IllegalArgumentException expected) {
+            backtestRejected = true;
+        }
+        if (!backtestRejected) throw new AssertionError("Backtest accepted invalid M5 continuity");
+
+        // No future refactor may silently reintroduce PUT into executed trades.
+        StrategyEngine.Report report = StrategyEngine.backtest(valid, 100.0, 2.0, 0.8, 80.0, 10);
+        for (StrategyEngine.Trade trade : report.trades) {
+            if (trade.direction != StrategyEngine.Signal.CALL)
+                throw new AssertionError("Backtest executed a non-CALL trade");
+        }
+
         System.out.println("PASS: invalid M5 histories rejected; valid series remains CALL/WAIT");
     }
 }
