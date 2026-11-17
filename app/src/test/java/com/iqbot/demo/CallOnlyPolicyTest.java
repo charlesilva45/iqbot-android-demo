@@ -35,12 +35,19 @@ public final class CallOnlyPolicyTest {
                 StrategyEngine.Signal observed = StrategySelector.recommend(bars, end).selected.signal;
                 int future = end + 1;
                 StrategyEngine.Candle original = bars.get(future);
-                double extreme = original.close + 10000;
-                bars.set(future, new StrategyEngine.Candle(original.time,
-                        extreme, extreme + 1, extreme - 1, extreme));
-                check(observed == StrategySelector.recommend(bars, end).selected.signal,
-                        "Future candle changed recommendation at " + end);
-                bars.set(future, original);
+                try {
+                    // Both an extreme future rally and crash must leave the past unchanged.
+                    for (double offset : new double[] {10000.0, -10000.0}) {
+                        double extreme = original.close + offset;
+                        bars.set(future, new StrategyEngine.Candle(original.time,
+                                extreme, extreme + 1, extreme - 1, extreme));
+                        check(observed == StrategySelector.recommend(bars, end).selected.signal,
+                                "Future candle changed recommendation at " + end
+                                        + " offset=" + offset);
+                    }
+                } finally {
+                    bars.set(future, original);
+                }
             }
         }
         System.out.println("PASS: CALL/WAIT only, no bearish or flat CALL, no future leakage");
