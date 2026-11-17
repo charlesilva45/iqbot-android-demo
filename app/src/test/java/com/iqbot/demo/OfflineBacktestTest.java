@@ -55,6 +55,16 @@ public final class OfflineBacktestTest {
         } catch (IOException expected) {
             require(expected.getMessage().contains("2 MiB"), "CSV byte limit error");
         }
+        // A broken content-provider stream must not trap the UI in an endless read loop.
+        try {
+            OfflineBacktest.readCsv(new java.io.InputStream() {
+                @Override public int read() { return 0; }
+                @Override public int read(byte[] bytes, int off, int len) { return 0; }
+            });
+            throw new AssertionError("Non-progressing CSV stream accepted");
+        } catch (IOException expected) {
+            require(expected.getMessage().contains("no progress"), "Non-progressing stream error");
+        }
         // Invalid historical data must fail before it can reach the simulation.
         String header = "timestamp,open,high,low,close\n";
         assertCsvRejected(header + "0,100,101,99,100\n0,100,101,99,100\n", "duplicate timestamp");
