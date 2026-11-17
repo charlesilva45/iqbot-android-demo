@@ -65,6 +65,25 @@ public final class OfflineBacktestTest {
         } catch (IOException expected) {
             require(expected.getMessage().contains("no progress"), "Non-progressing stream error");
         }
+        // A provider that stalls after delivering partial data must still fail closed.
+        try {
+            OfflineBacktest.readCsv(new java.io.InputStream() {
+                boolean delivered = false;
+                @Override public int read() { return 0; }
+                @Override public int read(byte[] bytes, int off, int len) {
+                    if (!delivered) {
+                        bytes[off] = 'x';
+                        delivered = true;
+                        return 1;
+                    }
+                    return 0;
+                }
+            });
+            throw new AssertionError("Partially progressing CSV stream accepted");
+        } catch (IOException expected) {
+            require(expected.getMessage().contains("no progress"),
+                    "Partial stream stall must fail closed");
+        }
         // A transiently stalled provider may recover; do not reject it before the third zero read.
         final ByteArrayInputStream recoveringSource = asStream(csv.toString());
         List<StrategyEngine.Candle> recovered = OfflineBacktest.readCsv(new java.io.InputStream() {
