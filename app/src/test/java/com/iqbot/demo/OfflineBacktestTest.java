@@ -65,6 +65,17 @@ public final class OfflineBacktestTest {
         } catch (IOException expected) {
             require(expected.getMessage().contains("no progress"), "Non-progressing stream error");
         }
+        // A transiently stalled provider may recover; do not reject it before the third zero read.
+        final ByteArrayInputStream recoveringSource = asStream(csv.toString());
+        List<StrategyEngine.Candle> recovered = OfflineBacktest.readCsv(new java.io.InputStream() {
+            int zeroReads = 0;
+            @Override public int read() throws IOException { return recoveringSource.read(); }
+            @Override public int read(byte[] bytes, int off, int len) throws IOException {
+                if (zeroReads++ < 2) return 0;
+                return recoveringSource.read(bytes, off, len);
+            }
+        });
+        require(recovered.size() == sample.size(), "Recover after two zero-byte reads");
         // Invalid historical data must fail before it can reach the simulation.
         String header = "timestamp,open,high,low,close\n";
         assertCsvRejected(header + "0,100,101,99,100\n0,100,101,99,100\n", "duplicate timestamp");
