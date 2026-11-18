@@ -106,7 +106,8 @@ public final class StrategyEngine {
         int hi=closedM15.size()-1;
         double trendFast=ema(closedM15,hi,9), trendSlow=ema(closedM15,hi,21);
         Candle last=m5.get(end), prev=m5.get(end-1);
-        if (volatility <= 0 || volatility/last.close < 0.0001) return Signal.WAIT;
+        // Reject excessive relative ATR as well as near-flat markets; match the selector's 3% cap.
+        if (volatility <= 0 || volatility/last.close < 0.0001 || volatility/last.close > 0.03) return Signal.WAIT;
         if (fast>slow && trendFast>trendSlow && strength>=52 && strength<=68
                 && last.close>last.open && last.close>prev.high) return Signal.CALL;
         // CALL-only research policy: bearish conditions must abstain, never emit PUT.
