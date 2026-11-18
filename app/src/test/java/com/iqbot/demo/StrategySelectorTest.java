@@ -30,6 +30,13 @@ public final class StrategySelectorTest {
             StrategyEngine.Signal selected=StrategySelector.recommend(b,end).selected.signal;
             check(selected!=StrategyEngine.Signal.PUT,"PUT on rising prefix "+end);
         }
+        // Any selected CALL must have EMA/RSI/ATR momentum and volatility approval.
+        for(int end=40;end<100;end++) {
+            StrategySelector.Recommendation recommendation=StrategySelector.recommend(b,end);
+            if(recommendation.selected.signal==StrategyEngine.Signal.CALL)
+                check(StrategySelector.evaluate(StrategySelector.Model.EMA_RSI_ATR,b,end).signal
+                        ==StrategyEngine.Signal.CALL,"CALL bypassed EMA/RSI/ATR at "+end);
+        }
         // Future candles must not change a past recommendation.
         StrategySelector.Recommendation before=StrategySelector.recommend(b,80);
         b.add(new StrategyEngine.Candle(100*300000L,5,6,4,5));
