@@ -174,7 +174,13 @@ public final class StrategySelector {
         }
         // CALL-only execution policy: bearish consensus is diagnostic, never an entry.
         // Candidate PUT signals remain visible for offline comparison only.
-        StrategyEngine.Signal consensus=calls>=3&&puts==0?
+        // EMA/RSI/ATR is a mandatory gate for an actionable CALL, not merely one vote.
+        // Without its volatility and momentum confirmation, fail closed to WAIT.
+        boolean emaRsiAtrConfirmed=false;
+        for(Choice candidate:choices)
+            if(candidate.model==Model.EMA_RSI_ATR && candidate.signal==StrategyEngine.Signal.CALL)
+                emaRsiAtrConfirmed=true;
+        StrategyEngine.Signal consensus=calls>=3&&puts==0&&emaRsiAtrConfirmed?
                 StrategyEngine.Signal.CALL:StrategyEngine.Signal.WAIT;
         Trend trend=trend(bars,end);
         // Pause for the shock candle and the next two closed M5 candles.
