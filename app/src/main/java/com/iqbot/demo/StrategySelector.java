@@ -177,10 +177,15 @@ public final class StrategySelector {
         StrategyEngine.Signal consensus=calls>=3&&puts==0?
                 StrategyEngine.Signal.CALL:StrategyEngine.Signal.WAIT;
         Trend trend=trend(bars,end);
-        if(trend.shock||consensus!=trend.direction||trend.strength==0)
+        // Pause for the shock candle and the next two closed M5 candles.
+        // Inspect only prefixes ending at or before end; never future bars.
+        boolean coolingDown=trend.shock;
+        for(int offset=1;offset<=2 && end-offset>=40;offset++)
+            coolingDown|=trend(bars,end-offset).shock;
+        if(coolingDown||consensus!=trend.direction||trend.strength==0)
             consensus=StrategyEngine.Signal.WAIT;
         Choice selected=new Choice(null,consensus,consensus==StrategyEngine.Signal.WAIT?
-                (trend.shock?"Aguardar: movimento brusco detectado":"Aguardar: sem consenso ou sem confirmação da tendência"):
+                (coolingDown?"Aguardar: movimento brusco ou pausa de segurança":"Aguardar: sem consenso ou sem confirmação da tendência"):
                 "Consenso experimental de pelo menos 3 estratégias a favor da tendência");
         return new Recommendation(selected,choices);
     }
