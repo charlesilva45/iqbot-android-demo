@@ -89,6 +89,11 @@ public final class OfflineBacktestTest {
         assertRiskRejected(flat, 100, 2, 1.01, 90, 10, "payout over 100 percent");
         assertRiskRejected(flat, 100, 2, 0.8, 100, 10, "floor at initial balance");
         assertRiskRejected(flat, 100, 2, 0.8, 90, 0, "zero trade cap");
+        assertRiskRejected(flat, -100, 2, 0.8, 90, 10, "negative starting balance");
+        assertRiskRejected(flat, 100, -2, 0.8, 90, 10, "negative stake");
+        assertRiskRejected(flat, 100, 0, 0.8, 90, 10, "zero stake");
+        assertRiskRejected(flat, 100, 2, -0.1, 90, 10, "negative payout");
+        assertRiskRejected(flat, 100, 2, 0.8, -1, 10, "negative risk floor");
         System.out.println("PASS: offline CSV, indicator snapshot, trade cap, and prospective risk floor");
     }
 
