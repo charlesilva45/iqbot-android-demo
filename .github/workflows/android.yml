@@ -17,10 +17,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Use preinstalled Android SDK
+      - name: Ensure Android SDK 35 and build tools are available
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          test -d "$ANDROID_HOME/platforms/android-35" || echo 'Android 35 platform will be installed by Gradle'
+          set -euo pipefail
+          : "${ANDROID_HOME:?ANDROID_HOME is required}"
+          if [[ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" || ! -x "$ANDROID_HOME/build-tools/35.0.0/aapt" ]]; then
+            SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+            test -x "$SDKMANAGER" || { echo "FAIL: Android sdkmanager unavailable" >&2; exit 1; }
+            "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+          fi
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
