@@ -51,6 +51,14 @@ jobs:
             java -cp /tmp/iqbot-classes "com.iqbot.demo.$name" 2>&1 | tee -a strategy-test-results.txt
             echo "PASS $name" | tee -a strategy-test-results.txt
           done
+      - name: Preserve strategy test diagnostics on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iqbot-strategy-test-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: strategy-test-results.txt
       - name: Verify UI strategy entry and broker isolation
         shell: bash
         run: |
