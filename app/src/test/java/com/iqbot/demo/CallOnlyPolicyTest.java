@@ -50,6 +50,24 @@ public final class CallOnlyPolicyTest {
                 }
             }
         }
+        // Mutate the entire unseen suffix together, not just one future bar.
+        // A historical decision must depend solely on candles available at that time.
+        for (double step : new double[] {0.15, -0.15, 0.0}) {
+            List<StrategyEngine.Candle> bars = series(step);
+            for (int end = 40; end < 110; end += 13) {
+                StrategyEngine.Signal baseline = StrategySelector.recommend(bars, end).selected.signal;
+                List<StrategyEngine.Candle> modified = new ArrayList<>(bars);
+                for (int future = end + 1; future < modified.size(); future++) {
+                    StrategyEngine.Candle original = modified.get(future);
+                    double price = 1000.0 + future * 20.0;
+                    modified.set(future, new StrategyEngine.Candle(original.time,
+                            price, price + 2.0, price - 2.0, price));
+                }
+                check(baseline == StrategySelector.recommend(modified, end).selected.signal,
+                        "Unseen suffix changed historical recommendation at " + end
+                                + " step=" + step);
+            }
+        }
         System.out.println("PASS: CALL/WAIT only, no bearish or flat CALL, no future leakage");
     }
 }
