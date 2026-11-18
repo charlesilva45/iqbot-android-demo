@@ -46,6 +46,22 @@ public final class StrategySelectorTest {
         check(StrategySelector.trend(shock,99).shock,"Downward shock not detected");
         check(StrategySelector.recommend(shock,99).selected.signal==StrategyEngine.Signal.WAIT,
                 "Shock must block recommendation");
+        // A shock at bar 97 must also block the following two completed bars.
+        List<StrategyEngine.Candle> cooldown=bars(100);
+        double shockBase=cooldown.get(96).close;
+        cooldown.set(97,new StrategyEngine.Candle(97*300000L,shockBase,
+                shockBase+0.4,shockBase-20,shockBase-19));
+        check(StrategySelector.recommend(cooldown,97).selected.signal==StrategyEngine.Signal.WAIT,
+                "Shock candle must wait");
+        check(StrategySelector.recommend(cooldown,98).selected.signal==StrategyEngine.Signal.WAIT,
+                "First cooldown candle must wait");
+        check(StrategySelector.recommend(cooldown,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Second cooldown candle must wait");
+        // Future bars cannot change an earlier cooldown decision.
+        StrategyEngine.Signal pastCooldown=StrategySelector.recommend(cooldown,98).selected.signal;
+        cooldown.add(new StrategyEngine.Candle(100*300000L,120,121,119,120));
+        check(StrategySelector.recommend(cooldown,98).selected.signal==pastCooldown,
+                "Cooldown used future candles");
         // The strength label counts directional candles, never future bars.
         check(up.strength>=0&&up.strength<=3,"Invalid trend strength");
         // Falling prices must not be classified as an uptrend.
