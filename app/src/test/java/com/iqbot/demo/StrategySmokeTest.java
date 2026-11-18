@@ -68,6 +68,48 @@ public final class StrategySmokeTest {
                 throw new AssertionError("Future candle changed historical trade");
             a++; b++;
         }
-        System.out.println("PASS: CSV, gap rejection, accounting, parameter validation, timeline, future-data isolation");
+        // A direct M5/M15 signal must reject future or gapped higher-timeframe bars.
+        java.util.List<StrategyEngine.Candle> closedM15=new java.util.ArrayList<>();
+        for(int i=0;i<24;i++) {
+            int j=i*3;
+            StrategyEngine.Candle x=candles.get(j), y=candles.get(j+1), z=candles.get(j+2);
+            closedM15.add(new StrategyEngine.Candle(z.time,x.open,
+                Math.max(x.high,Math.max(y.high,z.high)),
+                Math.min(x.low,Math.min(y.low,z.low)),z.close));
+        }
+        boolean futureM15=false;
+        try { StrategyEngine.signal(candles,68,closedM15); }
+        catch(IllegalArgumentException expected) { futureM15=true; }
+        if(!futureM15) throw new AssertionError("Future M15 candle accepted");
+        boolean gappedM15=false;
+        java.util.List<StrategyEngine.Candle> gapped=new java.util.ArrayList<>(closedM15.subList(0,22));
+        gapped.remove(8);
+        try { StrategyEngine.signal(candles,68,gapped); }
+        catch(IllegalArgumentException expected) { gappedM15=true; }
+        if(!gappedM15) throw new AssertionError("Gapped M15 timeline accepted");
+        // Appending later candles cannot change indicators computed on a closed prefix.
+        StrategyEngine.Indicators prefix=StrategyEngine.indicators(candles.subList(0,180));
+        StrategyEngine.Indicators samePrefix=StrategyEngine.indicators(altered.subList(0,180));
+        if(Double.compare(prefix.ema9,samePrefix.ema9)!=0 ||
+           Double.compare(prefix.ema21,samePrefix.ema21)!=0 ||
+           Double.compare(prefix.rsi14,samePrefix.rsi14)!=0 ||
+           Double.compare(prefix.atr14,samePrefix.atr14)!=0)
+            throw new AssertionError("Future data changed closed-prefix indicators");
+        // CALL-only contract of the actual engine used by BacktestActivity.
+        // A falling series may produce WAIT, but never a PUT trade.
+        java.util.List<StrategyEngine.Candle> falling=new java.util.ArrayList<>();
+        for(int i=0;i<240;i++) {
+            double open=200-i*0.2;
+            double close=open-0.15;
+            falling.add(new StrategyEngine.Candle(start+i*300000L,open,open+0.05,close-0.05,close));
+        }
+        StrategyEngine.Report bearish=StrategyEngine.backtestWithRiskFloor(falling,100,2,0.8,90,10);
+        for(StrategyEngine.Trade trade:bearish.trades)
+            if(trade.direction!=StrategyEngine.Signal.CALL)
+                throw new AssertionError("Non-CALL trade in backtest");
+        for(StrategyEngine.Trade trade:report.trades)
+            if(trade.direction!=StrategyEngine.Signal.CALL)
+                throw new AssertionError("Non-CALL trade in sample");
+        System.out.println("PASS: CSV, gap rejection, accounting, parameter validation, timeline, future-data isolation, CALL-only");
     }
 }

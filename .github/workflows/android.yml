@@ -1,6 +1,8 @@
 name: Android APK
 on:
   push:
+    branches: [main, 'feature/iqbot-0-4-offline-backtest']
+  pull_request:
     branches: [main]
   workflow_dispatch:
 jobs:
@@ -21,8 +23,79 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - run: gradle assembleDebug --no-daemon
+      - name: Verify pure Java strategy tests before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/iqbot-classes
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java app/src/test/java/com/iqbot/demo/*Test.java
+          : > strategy-test-results.txt
+          for test in app/src/test/java/com/iqbot/demo/*Test.java; do
+            name="$(basename "$test" .java)"
+            echo "RUN $name" | tee -a strategy-test-results.txt
+            java -cp /tmp/iqbot-classes "com.iqbot.demo.$name" 2>&1 | tee -a strategy-test-results.txt
+            echo "PASS $name" | tee -a strategy-test-results.txt
+          done
+      - name: Verify UI strategy entry and broker isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          UI=app/src/main/java/com/iqbot/demo/MainActivity.java
+          test -f app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          grep -Fq 'new Intent(this, BacktestActivity.class)' "$UI"
+          grep -Fq 'DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)' "$UI"
+          grep -Fq 'Abrir o site não conecta sua conta ao IQBot.' "$UI"
+          grep -Fq 'Intent.ACTION_VIEW' "$UI"
+          grep -Fq 'StrategySelector.recommend(input, input.size() - 1)' app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          grep -Fq 'Recomendação CALL/WAIT:' app/src/main/java/com/iqbot/demo/BacktestActivity.java
+          # The dashboard preview must use the same closed-candle selector as backtest.
+          grep -Fq 'StrategySelector.recommend(previewCandles, previewCandles.size() - 1)' "$UI"
+          grep -Fq 'OfflineBacktest.sample()' "$UI"
+          grep -Fq 'série SINTÉTICA' "$UI"
+          grep -Fq 'preview.selected.signal == StrategyEngine.Signal.CALL' "$UI"
+      - name: Verify offline-only Android manifest security
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("app/src/main/AndroidManifest.xml").getroot()
+          android = "{http://schemas.android.com/apk/res/android}"
+          permissions = [node.get(android + "name", "") for node in root if node.tag in ("uses-permission", "uses-permission-sdk-23")]
+          assert "android.permission.INTERNET" not in permissions, "Offline build must not request network access"
+          assert "android.permission.ACCESS_NETWORK_STATE" not in permissions, "Offline build must not request network state"
+          app = root.find("application")
+          assert app is not None and app.get(android + "usesCleartextTraffic") == "false", "Cleartext traffic must be disabled"
+          activities = {node.get(android + "name"): node for node in app.findall("activity")}
+          assert activities.get(".BacktestActivity") is not None, "Backtest activity missing"
+          assert activities[".BacktestActivity"].get(android + "exported") == "false", "Backtest activity must remain private"
+          print("PASS: offline manifest has no network permission; backtest is private; cleartext disabled")
+          PY
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+      - name: Verify APK identity and version
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$AAPT"
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
+          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='4' versionName='0\\.4\\.0'" apk-badging.txt
+          # Verify the packaged manifest, not just the source manifest.
+          "$AAPT" dump permissions "$APK" | tee apk-permissions.txt
+          if grep -Eq 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)' apk-permissions.txt; then
+            echo "FAIL: packaged offline APK requests network access" >&2
+            exit 1
+          fi
+          sha256sum "$APK" | tee apk-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: iqbot-demo-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: iqbot-lab-0.4-debug-apk
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            apk-badging.txt
+            apk-sha256.txt
+            apk-permissions.txt
+            strategy-test-results.txt

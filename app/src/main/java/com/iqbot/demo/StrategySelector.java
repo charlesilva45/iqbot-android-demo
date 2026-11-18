@@ -181,8 +181,10 @@ public final class StrategySelector {
             if(c.signal==StrategyEngine.Signal.CALL) calls++;
             if(c.signal==StrategyEngine.Signal.PUT) puts++;
         }
-        StrategyEngine.Signal consensus=calls>=3&&puts==0?StrategyEngine.Signal.CALL:
-                puts>=3&&calls==0?StrategyEngine.Signal.PUT:StrategyEngine.Signal.WAIT;
+        // CALL-only execution policy: bearish consensus is diagnostic, never an entry.
+        // Candidate PUT signals remain visible for offline comparison only.
+        StrategyEngine.Signal consensus=calls>=3&&puts==0?
+                StrategyEngine.Signal.CALL:StrategyEngine.Signal.WAIT;
         Trend trend=trend(bars,end);
         if(trend.shock||consensus!=trend.direction||trend.strength==0)
             consensus=StrategyEngine.Signal.WAIT;

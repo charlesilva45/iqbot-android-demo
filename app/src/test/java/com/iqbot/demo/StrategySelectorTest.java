@@ -21,10 +21,14 @@ public final class StrategySelectorTest {
         StrategySelector.Recommendation r=StrategySelector.recommend(b,99);
         check(r.candidates.size()==5,"Five candidates required");
         check(r.selected.signal==StrategyEngine.Signal.WAIT
-                || r.selected.signal==StrategyEngine.Signal.CALL
-                || r.selected.signal==StrategyEngine.Signal.PUT,"Invalid recommendation");
+                || r.selected.signal==StrategyEngine.Signal.CALL,"Selected recommendation must be CALL or WAIT");
         for(StrategySelector.Model m:StrategySelector.Model.values()) {
             check(StrategySelector.evaluate(m,b,10).signal==StrategyEngine.Signal.WAIT,"Warmup");
+        }
+        // Every completed prefix in a rising series must also exclude PUT.
+        for(int end=40;end<100;end++) {
+            StrategyEngine.Signal selected=StrategySelector.recommend(b,end).selected.signal;
+            check(selected!=StrategyEngine.Signal.PUT,"PUT on rising prefix "+end);
         }
         // Future candles must not change a past recommendation.
         StrategySelector.Recommendation before=StrategySelector.recommend(b,80);
@@ -52,6 +56,13 @@ public final class StrategySelectorTest {
         }
         check(StrategySelector.trend(falling,99).direction==StrategyEngine.Signal.PUT,
                 "Downtrend misclassified");
+        // PUT candidates may be diagnosed but the selected executable signal is CALL/WAIT only.
+        check(StrategySelector.recommend(falling,99).selected.signal==StrategyEngine.Signal.WAIT,
+                "Bearish consensus must not issue PUT");
+        for(int end=40;end<100;end++) {
+            StrategyEngine.Signal selected=StrategySelector.recommend(falling,end).selected.signal;
+            check(selected!=StrategyEngine.Signal.PUT,"PUT recommendation at candle "+end);
+        }
         // Upward shocks are blocked just like sudden drops.
         List<StrategyEngine.Candle> spike=bars(100);
         double previous=spike.get(98).close;
@@ -80,6 +91,16 @@ public final class StrategySelectorTest {
         try { StrategySelector.recommend(gap,80); }
         catch(IllegalArgumentException expected) { rejected=true; }
         check(rejected,"Missing candle accepted");
+        // A caller must not be able to alter the diagnostic candidates after selection.
+        boolean immutable=false;
+        try { r.candidates.clear(); }
+        catch(UnsupportedOperationException expected) { immutable=true; }
+        check(immutable,"Candidate list must be immutable");
+        // Invalid future index must fail closed rather than inspecting unseen candles.
+        boolean futureRejected=false;
+        try { StrategySelector.recommend(b,b.size()); }
+        catch(IllegalArgumentException expected) { futureRejected=true; }
+        check(futureRejected,"Future end index accepted");
         System.out.println("PASS: five models, warmup, future isolation, missing M5 rejection");
     }
 }

@@ -1,6 +1,7 @@
 package com.iqbot.demo;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.widget.Toast;
@@ -10,8 +11,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -22,25 +21,13 @@ import java.util.Locale;
 import java.util.Random;
 
 public class MainActivity extends Activity {
-    private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
     private final ArrayList<Double> equity = new ArrayList<>();
     private double balance = 100.0;
     private int operations = 0, wins = 0;
-    private boolean automatic = false;
     private TextView summary, history;
-    private Button autoButton;
     private EquityChart chart;
     private final StringBuilder log = new StringBuilder();
-    private final Runnable autoTick = new Runnable() {
-        @Override public void run() {
-            if (!automatic) return;
-            simulate();
-            if (operations >= 10 || balance < 2 || balance <= 90) {
-                stopAuto();
-            } else handler.postDelayed(this, 1200);
-        }
-    };
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         equity.add(balance);
@@ -62,6 +49,25 @@ public class MainActivity extends Activity {
         badge.setPadding(dp(12), dp(10), dp(12), dp(10));
         badge.setBackground(surface(Color.rgb(17, 54, 51), 14));
         root.addView(badge);
+        Button backtest = actionButton("Executar estratégia CALL/WAIT (offline)", Color.rgb(8, 145, 178), Color.WHITE);
+        root.addView(backtest, buttonParams());
+        TextView strategyNote = label("Este é o motor de sinais CALL/WAIT com candles M5/M15 fechados. Importe CSV para avaliar dados históricos; nenhuma ordem é enviada.", 12, Color.rgb(148, 163, 184));
+        strategyNote.setPadding(0, dp(8), 0, dp(4));
+        root.addView(strategyNote);
+        backtest.setOnClickListener(v -> startActivity(new Intent(this, BacktestActivity.class)));
+        // This panel uses the same selector as the offline backtest, not the random demo.
+        // The bundled candles are synthetic and must never be presented as live quotes.
+        java.util.List<StrategyEngine.Candle> previewCandles = OfflineBacktest.sample();
+        StrategySelector.Recommendation preview =
+                StrategySelector.recommend(previewCandles, previewCandles.size() - 1);
+        String previewSignal = preview.selected.signal == StrategyEngine.Signal.CALL ? "CALL" : "WAIT";
+        TextView previewLabel = label(
+                "SINAL DO MOTOR: " + previewSignal
+                        + " · série SINTÉTICA, último M5 fechado · apenas estudo, sem ordem",
+                13, Color.rgb(165, 243, 209));
+        previewLabel.setPadding(0, dp(10), 0, dp(10));
+        root.addView(previewLabel);
+
         LinearLayout balanceCard = new LinearLayout(this);
         balanceCard.setOrientation(LinearLayout.VERTICAL);
         balanceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -81,26 +87,20 @@ public class MainActivity extends Activity {
         chart = new EquityChart();
         chart.setBackground(surface(Color.rgb(22, 34, 55), 20));
         root.addView(chart, new LinearLayout.LayoutParams(-1, dp(220)));
-        TextView actions = label("CONTROLES DA SIMULAÇÃO", 12, Color.rgb(148, 163, 184));
+        TextView actions = label("DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)", 12, Color.rgb(148, 163, 184));
         actions.setPadding(0, dp(24), 0, dp(8));
         root.addView(actions);
-        Button single = actionButton("Simular uma operação", Color.rgb(8, 145, 178), Color.WHITE);
+        Button single = actionButton("Simular operação aleatória", Color.rgb(8, 145, 178), Color.WHITE);
         root.addView(single, buttonParams());
-        single.setOnClickListener(v -> { if (!automatic) simulate(); });
-        autoButton = actionButton("Iniciar 10 simulações automáticas", Color.rgb(30, 41, 59), Color.WHITE);
-        root.addView(autoButton, buttonParams());
-        autoButton.setOnClickListener(v -> {
-            if (automatic) stopAuto();
-            else {
-                if (operations >= 10) { reset(); }
-                automatic = true;
-                autoButton.setText("Parar simulação");
-                handler.post(autoTick);
-            }
-        });
+        single.setOnClickListener(v -> simulate());
         Button reset = actionButton("Reiniciar dados fictícios", Color.rgb(30, 41, 59), Color.rgb(203, 213, 225));
         root.addView(reset, buttonParams());
-        reset.setOnClickListener(v -> reset());
+        reset.setOnClickListener(v -> new AlertDialog.Builder(this)
+            .setTitle("Reiniciar simulação?")
+            .setMessage("O saldo e o histórico fictícios desta sessão serão apagados. Nenhuma ordem real será afetada.")
+            .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+            .setPositiveButton("Reiniciar", (dialog, which) -> reset())
+            .show());
         TextView accessTitle = label("ACESSO À CORRETORA", 12, Color.rgb(148, 163, 184));
         accessTitle.setPadding(0, dp(24), 0, dp(8));
         root.addView(accessTitle);
@@ -162,7 +162,7 @@ public class MainActivity extends Activity {
         return params;
     }
     private void simulate() {
-        if (balance < 2 || balance <= 90) { stopAuto(); return; }
+        if (operations >= 10 || balance < 2 || balance - 2 < 90) return;
         boolean win = random.nextBoolean();
         balance += win ? 1.60 : -2.00;
         operations++;
@@ -176,17 +176,9 @@ public class MainActivity extends Activity {
         history.setText(log.length() == 0 ? "Nenhuma operação ainda." : log.toString());
         chart.invalidate();
     }
-    private void stopAuto() {
-        automatic = false;
-        handler.removeCallbacks(autoTick);
-        if (autoButton != null) autoButton.setText("Iniciar 10 simulações automáticas");
-    }
     private void reset() {
-        stopAuto(); balance = 100; operations = 0; wins = 0;
+        balance = 100; operations = 0; wins = 0;
         log.setLength(0); equity.clear(); equity.add(balance); refresh();
-    }
-    @Override protected void onDestroy() {
-        stopAuto(); super.onDestroy();
     }
     private class EquityChart extends View {
         final Paint p = new Paint(3);
