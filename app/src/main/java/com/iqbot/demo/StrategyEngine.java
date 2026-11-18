@@ -184,9 +184,10 @@ public final class StrategyEngine {
             }
             if (m15.size()<22) continue;
             Signal s=signal(m5,i,m15);
-            if(s==Signal.WAIT) continue;
+            // Fail closed: even if signal() changes, the simulator must never execute PUT.
+            if (s != Signal.CALL) continue;
             Candle next=m5.get(i+1);
-            boolean win=s==Signal.CALL?next.close>next.open:next.close<next.open;
+            boolean win=next.close>next.open;
             boolean tie=next.close==next.open;
             double pnl=win?stake*payout:-stake;
             balance+=pnl;
