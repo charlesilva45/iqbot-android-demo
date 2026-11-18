@@ -109,7 +109,7 @@ public final class StrategySelector {
                             macd<0&&macd<prevMacd&&close<slow);
                 break;
             case EMA_RSI_ATR:
-                if(volatility>0&&volatility/close>=0.0001)
+                if(volatility>0&&volatility/close>=0.0001&&volatility/close<=0.03)
                     s=direction(fast>slow&&strength>=52&&strength<=68&&close>previousClose,
                                 fast<slow&&strength>=32&&strength<=48&&close<previousClose);
                 break;
