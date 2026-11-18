@@ -31,7 +31,13 @@ jobs:
           mkdir -p /tmp/iqbot-classes
           javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java app/src/test/java/com/iqbot/demo/*Test.java
           : > strategy-test-results.txt
-          for test in app/src/test/java/com/iqbot/demo/*Test.java; do
+          shopt -s nullglob
+          tests=(app/src/test/java/com/iqbot/demo/*Test.java)
+          if (( ${#tests[@]} == 0 )); then
+            echo "FAIL: no Java strategy tests found" >&2
+            exit 1
+          fi
+          for test in "${tests[@]}"; do
             name="$(basename "$test" .java)"
             echo "RUN $name" | tee -a strategy-test-results.txt
             java -cp /tmp/iqbot-classes "com.iqbot.demo.$name" 2>&1 | tee -a strategy-test-results.txt
