@@ -36,15 +36,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/iqbot-classes
-          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java app/src/test/java/com/iqbot/demo/*Test.java
           : > strategy-test-results.txt
           shopt -s nullglob
           tests=(app/src/test/java/com/iqbot/demo/*Test.java)
           if (( ${#tests[@]} == 0 )); then
-            echo "FAIL: no Java strategy tests found" >&2
+            echo "FAIL: no Java strategy tests found" | tee -a strategy-test-results.txt >&2
             exit 1
           fi
+          mkdir -p /tmp/iqbot-classes
+          echo "Compiling strategy sources and ${#tests[@]} test classes" | tee -a strategy-test-results.txt
+          javac -d /tmp/iqbot-classes app/src/main/java/com/iqbot/demo/{StrategyEngine,CandleCsv,OutOfSample,StrategySelector,OfflineBacktest}.java "${tests[@]}" 2>&1 | tee -a strategy-test-results.txt
           for test in "${tests[@]}"; do
             name="$(basename "$test" .java)"
             echo "RUN $name" | tee -a strategy-test-results.txt
