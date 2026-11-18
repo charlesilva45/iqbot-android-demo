@@ -70,6 +70,14 @@ public final class StrategySelectorTest {
         check(StrategySelector.trend(spike,99).shock,"Upward shock not detected");
         check(StrategySelector.recommend(spike,99).selected.signal==StrategyEngine.Signal.WAIT,
                 "Upward shock must block recommendation");
+        // Abnormally wide candles must not pass the EMA/RSI/ATR volatility gate.
+        List<StrategyEngine.Candle> extreme=new ArrayList<>();
+        for(int i=0;i<100;i++) {
+            double p=100+i*0.15;
+            extreme.add(new StrategyEngine.Candle(i*300000L,p,p+15,p-15,p));
+        }
+        check(StrategySelector.evaluate(StrategySelector.Model.EMA_RSI_ATR,extreme,99).signal
+                ==StrategyEngine.Signal.WAIT,"Extreme ATR must block EMA/RSI/ATR");
         // Flat bars should not produce a directional consensus.
         List<StrategyEngine.Candle> flat=new ArrayList<>();
         for(int i=0;i<100;i++)
