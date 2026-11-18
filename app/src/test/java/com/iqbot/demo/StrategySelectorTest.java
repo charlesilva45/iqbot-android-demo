@@ -86,6 +86,18 @@ public final class StrategySelectorTest {
         check(StrategySelector.trend(spike,99).shock,"Upward shock not detected");
         check(StrategySelector.recommend(spike,99).selected.signal==StrategyEngine.Signal.WAIT,
                 "Upward shock must block recommendation");
+        // An upward spike also imposes the full two-candle cooldown, not just the spike bar.
+        List<StrategyEngine.Candle> upwardCooldown=bars(100);
+        double upwardBase=upwardCooldown.get(96).close;
+        upwardCooldown.set(97,new StrategyEngine.Candle(97*300000L,upwardBase,
+                upwardBase+20,upwardBase-0.4,upwardBase+19));
+        for(int end=97;end<=99;end++)
+            check(StrategySelector.recommend(upwardCooldown,end).selected.signal
+                    ==StrategyEngine.Signal.WAIT,"Upward shock cooldown failed at " + end);
+        StrategyEngine.Signal upwardPast=StrategySelector.recommend(upwardCooldown,98).selected.signal;
+        upwardCooldown.add(new StrategyEngine.Candle(100*300000L,1,2,0,1));
+        check(StrategySelector.recommend(upwardCooldown,98).selected.signal==upwardPast,
+                "Upward cooldown used future candles");
         // Abnormally wide candles must not pass the EMA/RSI/ATR volatility gate.
         List<StrategyEngine.Candle> extreme=new ArrayList<>();
         for(int i=0;i<100;i++) {
