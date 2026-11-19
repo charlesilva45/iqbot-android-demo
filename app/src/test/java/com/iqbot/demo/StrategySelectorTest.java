@@ -102,7 +102,7 @@ public final class StrategySelectorTest {
             check(StrategySelector.recommend(upwardCooldown,end).selected.signal
                     ==StrategyEngine.Signal.WAIT,"Upward shock cooldown failed at " + end);
         StrategyEngine.Signal upwardPast=StrategySelector.recommend(upwardCooldown,98).selected.signal;
-        upwardCooldown.add(new StrategyEngine.Candle(100*300000L,1,2,0,1));
+        upwardCooldown.add(new StrategyEngine.Candle(100*300000L,1,2,0.5,1));
         check(StrategySelector.recommend(upwardCooldown,98).selected.signal==upwardPast,
                 "Upward cooldown used future candles");
         // Abnormally wide candles must not pass the EMA/RSI/ATR volatility gate.
