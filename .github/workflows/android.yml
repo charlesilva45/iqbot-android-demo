@@ -1,7 +1,7 @@
 name: Android APK
 on:
   push:
-    branches: [main, 'feature/iqbot-0-4-offline-backtest', 'work/iqbot-demo-0.4.1']
+    branches: [main, 'feature/iqbot-0-4-offline-backtest', 'work/iqbot-demo-0.4.1', 'work/derivbot-1.0']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -45,8 +45,9 @@ jobs:
           test -f app/src/main/java/com/iqbot/demo/BacktestActivity.java
           grep -Fq 'new Intent(this, BacktestActivity.class)' "$UI"
           grep -Fq 'DEMONSTRAÇÃO ALEATÓRIA (NÃO É A ESTRATÉGIA)' "$UI"
-          grep -Fq 'Abrir o site não conecta sua conta ao IQBot.' "$UI"
-          grep -Fq 'Intent.ACTION_VIEW' "$UI"
+          grep -Fq 'derivBot 1.0' "$UI"
+          grep -Fq 'integração com IQ Option e Deriv suspensa' "$UI"
+          if grep -Eq 'Intent.ACTION_VIEW|iqoption\\.com|https://api\\.deriv' "$UI"; then echo 'Broker access must remain disabled'; exit 1; fi
           grep -Fq 'startForegroundService(service)' app/src/main/java/com/iqbot/demo/BacktestActivity.java
           grep -Fq 'StrategyEngine.backtestWithRiskFloor(input' app/src/main/java/com/iqbot/demo/ReplayService.java
           grep -Fq 'setAction(STOP)' app/src/main/java/com/iqbot/demo/ReplayService.java
@@ -64,7 +65,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='5' versionName='0\\.4\\.1'" apk-badging.txt
+          grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='6' versionName='1\\.0'" apk-badging.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
           if grep -Fq 'android.permission.INTERNET' apk-permissions.txt; then
             echo 'Offline APK must not declare INTERNET'
@@ -86,7 +87,7 @@ jobs:
           script: bash tools/android-replay-smoke.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: iqbot-lab-0.4.1-debug-apk
+          name: derivbot-1.0-offline-debug-apk
           if-no-files-found: error
           path: |
             app/build/outputs/apk/debug/*.apk
