@@ -1,7 +1,7 @@
 name: Strategy engine smoke test
 on:
   push:
-    branches: [main]
+    branches: [main, 'work/derivbot-1.0']
   pull_request:
     branches: [main]
   workflow_dispatch:
