@@ -66,6 +66,7 @@ jobs:
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
           grep -Eq "^package: name='com\\.iqbot\\.demo\\.lab' versionCode='6' versionName='1\\.0'" apk-badging.txt
+          grep -Fq "application-label:'derivBot'" apk-badging.txt
           "$AAPT" dump permissions "$APK" > apk-permissions.txt
           if grep -Fq 'android.permission.INTERNET' apk-permissions.txt; then
             echo 'Offline APK must not declare INTERNET'
