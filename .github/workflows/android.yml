@@ -85,6 +85,19 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: bash tools/android-replay-smoke.sh
+      - name: Preserve CI diagnostics even if build fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: derivbot-1.0-ci-diagnostics
+          if-no-files-found: warn
+          path: |
+            strategy-test-results.txt
+            apk-badging.txt
+            apk-sha256.txt
+            apk-signature.txt
+            apk-permissions.txt
+            android-test-results.txt
       - uses: actions/upload-artifact@v4
         with:
           name: derivbot-1.0-offline-debug-apk
