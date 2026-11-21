@@ -38,9 +38,10 @@ public final class CallOnlyPolicyTest {
                 try {
                     // Both an extreme future rally and crash must leave the past unchanged.
                     for (double offset : new double[] {10000.0, -10000.0}) {
-                        double extreme = original.close + offset;
+                        double extreme = offset < 0 ? 1.0 : original.close + offset;
+                        // Keep OHLC strictly positive even for a simulated crash.
                         bars.set(future, new StrategyEngine.Candle(original.time,
-                                extreme, extreme + 1, extreme - 1, extreme));
+                                extreme, extreme + 1, Math.max(0.01, extreme - 1), extreme));
                         check(observed == StrategySelector.recommend(bars, end).selected.signal,
                                 "Future candle changed recommendation at " + end
                                         + " offset=" + offset);
